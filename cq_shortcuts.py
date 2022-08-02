@@ -1,5 +1,7 @@
 import math
 import cadquery as cq
+import numpy
+from scipy.spatial import ConvexHull as sphull
 
 PI2 = math.pi * 2
 PI3 = PI2 / 3
@@ -47,3 +49,54 @@ def arc(angle, addition, inner_radius, outer_radius, height=1.0):
         .close() \
         .extrude(height)
 
+
+def face_from_points(points):
+    # debugprint('face_from_points()')
+    edges = []
+    num_pnts = len(points)
+    for i in range(len(points)):
+        p1 = points[i]
+        p2 = points[(i + 1) % num_pnts]
+        edges.append(
+            cq.Edge.makeLine(
+                cq.Vector(p1[0], p1[1], p1[2]),
+                cq.Vector(p2[0], p2[1], p2[2]),
+            )
+        )
+
+    face = cq.Face.makeFromWires(cq.Wire.assembleEdges(edges))
+
+    return face
+
+
+def hull_from_points(points):
+    # debugprint('hull_from_points()')
+    hull_calc = sphull(points)
+    n_faces = len(hull_calc.simplices)
+
+    faces = []
+    for i in range(n_faces):
+        face_items = hull_calc.simplices[i]
+        fpnts = []
+        for item in face_items:
+            fpnts.append(points[item])
+        faces.append(face_from_points(fpnts))
+
+    shape = cq.Solid.makeSolid(cq.Shell.makeShell(faces))
+    shape = cq.Workplane('XY').union(shape)
+    return shape
+
+
+def hull_from_shapes(shapes, points=None):
+    # debugprint('hull_from_shapes()')
+    vertices = []
+    for shape in shapes:
+        verts = shape.vertices()
+        for vert in verts.objects:
+            vertices.append(numpy.array(vert.toTuple()))
+    if points is not None:
+        for point in points:
+            vertices.append(numpy.array(point))
+
+    shape = hull_from_points(vertices)
+    return shape

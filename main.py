@@ -1,4 +1,5 @@
 from cq_shortcuts import *
+import numpy
 
 cutout_margin = 0.5
 size = (10 - cutout_margin * 2, 10 - cutout_margin * 2)
@@ -85,7 +86,7 @@ def screw_hole():
 
 
 def sensor_mount():
-    sm_base = wp().box(_sm_base_w, sm_base_h, sm_base_d).rotate((0, 0, 0), (0, 0, 1), 90).edges("|Z").fillet(5.0)
+    sm_base = wp().box(_sm_base_w, sm_base_h, sm_base_d).rotate((0, 0, 0), (0, 0, 1), 90).edges("|Z").fillet(8.0)
     bottom_hole = wp().box(4, 4, 6).translate((0, -2, 0)).union(wp().cylinder(6, 2))
 
     result = sm_base.cut(bottom_hole).translate((0, 0, sm_offset_z))
@@ -135,6 +136,26 @@ def top_plate():
     return result
 
 
+def coords(angle, dist):
+    x = math.sin(angle) * dist
+    y = math.cos(angle) * dist
+    return x, y
+
+
+def fin(width, length, corner_radius,):
+    pi3 = (math.pi / 2)
+    x1 = math.sin(0) * length
+    y1 = math.cos(0) * length
+    x2 = math.sin(pi3) * length
+    y2 = math.cos(pi3) * length
+    x3 = math.sin(pi3 * 2) * length
+    y3 = math.cos(pi3 * 2) * length
+    plane = cq.Workplane("front").moveTo(x1, y1).lineTo(x2, y2).lineTo(x3, y3).close().extrude(width)
+    plane = plane.edges("|Z").fillet(corner_radius)
+    plane = plane.translate((0, 0, -width/2))
+    return plane
+
+
 slot_inner_radius = 20
 slot_outer_radius = 23.5
 slot_angle = 30
@@ -144,49 +165,62 @@ def flanges():
     flange_pos = [
         75, 165, 295
     ]
-    flange_offset = -2.1
+    flange_offset = -1.85
     shape = None
     for angle in flange_pos:
         flange = arc(angle + 120, 30, slot_inner_radius, slot_outer_radius, height=0.9)
-        flange.edges(">Z").fillet(0.5)
+        flange = flange.edges(">Z").chamfer(0.2)
         shape = shape.union(flange) if shape is not None else flange
 
     return shape.translate((0, 0, flange_offset))
-    
-
-ball = wp().sphere(padded_ball)
-bottom_cutter = wp().box(_sm_base_w * 2, sm_base_h * 2, sm_base_d * 3).rotate((0, 0, 0), (0, 0, 1), math.pi / 2)\
-    .translate((0, 0, -(19.5 + (sm_base_d / 2))))
-box_cutter = wp().box(socket_radius * 2 + ball_padding, socket_radius * 2 + ball_padding, socket_radius * 2) \
-    .translate((0, 0, socket_radius)).union(ball)
 
 
-inner_cyl = wp().cylinder(5, padded_ball)
-top_cyl = wp().cylinder(5, socket_radius).cut(inner_cyl).translate((0, 0, 2.5))
-lip = wp().cylinder(1, socket_radius + 1).cut(cq.Workplane("XY").cylinder(1, ball_radius + 0.2)).translate((0, 0, 5.5))
-lip = lip.edges(">Z").chamfer(0.5)
-top_cyl = top_cyl.union(lip)
+def generate_btu_socket():
 
-sm_screw_holes = screw_hole()\
-    .translate((0, sm_screw_dist / 2, 0))\
-    .union(screw_hole().translate((0, -(sm_screw_dist / 2), 0)))\
-    .translate((0, 0, sm_offset_z - 2.0))
+    ball = wp().sphere(padded_ball)
+    bottom_cutter = wp().box(_sm_base_w * 2, sm_base_h * 2, sm_base_d * 3).rotate((0, 0, 0), (0, 0, 1), math.pi / 2)\
+        .translate((0, 0, -(19.8 + (sm_base_d / 2))))
+    box_cutter = wp().box(socket_radius * 2 + ball_padding, socket_radius * 2 + ball_padding, socket_radius * 2) \
+        .translate((0, 0, socket_radius)).union(ball)
 
-socket = wp().sphere(socket_radius)  # .cut(bottom_cutter)
-sensor = sensor_mount()
-socket = socket.cut(bottom_cutter.union(ball))
-# socket = socket.union(sensor_mount())
-socket = socket.cut(sm_screw_holes)
-sensor = sensor.cut(ball)
-sensor = sensor.translate((0, 0, 0.1))
-socket = socket.union(sensor)
-socket = rotate_around_x(socket, -10)
-socket = socket.union(top_plate())
-socket = socket.cut(box_cutter)
-socket = socket.union(top_cyl)
-socket = socket.cut(btus())
-socket = socket.union(flanges())
-socket = rotate_around_z(socket, -90)
+
+    inner_cyl = wp().cylinder(5, padded_ball)
+    top_cyl = wp().cylinder(5, socket_radius).cut(inner_cyl).translate((0, 0, 2.5))
+    # lip = wp().cylinder(1.5, socket_radius + 1.5).cut(cq.Workplane("XY").cylinder(2, ball_radius + 0.2)).translate((0, 0, 5.5))
+    lip = wp().cylinder(1.25, socket_radius + 1.5).cut(cq.Workplane("XY").cylinder(1.25, ball_radius + 0.1)).translate((0, 0, 5.5))
+    lip = lip.edges("<Z").chamfer(1.0)
+    top_cyl = top_cyl.union(lip)
+
+    sm_screw_holes = screw_hole()\
+        .translate((0, sm_screw_dist / 2, 0))\
+        .union(screw_hole().translate((0, -(sm_screw_dist / 2), 0)))\
+        .translate((0, 0, sm_offset_z - 2.0))
+
+    socket = wp().sphere(socket_radius)  # .cut(bottom_cutter)
+    sensor = sensor_mount()
+    socket = socket.cut(bottom_cutter.union(ball))
+    # socket = socket.union(sensor_mount())
+    socket = socket.cut(sm_screw_holes)
+    sensor = sensor.cut(ball)
+    sensor = sensor.translate((0, 0, 0.1))
+    socket = socket.union(sensor)
+    socket = rotate_around_x(socket, -5)
+    socket = socket.union(top_plate())
+    socket = socket.cut(box_cutter)
+    socket = socket.union(top_cyl)
+    socket = socket.cut(btus())
+    socket = socket.union(flanges())
+    socket = rotate_around_z(socket, -90)
+
+    return socket
+
+outer_radius = 2.5
+outer_width = 10
+axle_radius = 1.5
+axle_width = 6.5
+base_fin = fin(outer_width, 10, outer_radius)
+inner_fin = fin(axle_width, 14, axle_radius)
+
 
 # Render the solid
-show_object(socket)
+show_object(generate_btu_socket())
