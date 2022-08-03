@@ -160,11 +160,11 @@ def fin(width, length, corner_radius,):
 def bearing_fin(with_cut=False):
     axle_radius = 3
     axle_width = 9
-    base_fin = fin(11, 9, axle_radius)
+    base_fin = fin(13, 9, axle_radius)
 
     if with_cut:
-        cutter = wp().cylinder(3.3, 4).translate((1, 0, 0))
-        axle_groove = wp().box(4, 3.1, 8).edges(">X").fillet(0.8).translate((0.5, 0, 0))
+        cutter = wp().cylinder(3.3, 4).translate((1.7, 0, 0))
+        axle_groove = wp().box(4, 3.1, 8).edges(">X").fillet(0.8).translate((1.2, 0, 0))
         base_fin = base_fin.cut(cutter).cut(axle_groove)
 
     return base_fin
