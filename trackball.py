@@ -1,4 +1,4 @@
-from jupyter_cadquery.viewer.client import show_object
+# from jupyter_cadquery.viewer.client import show_object
 
 from cq_shortcuts import *
 
@@ -7,7 +7,7 @@ size = (10 - cutout_margin * 2, 10 - cutout_margin * 2)
 cutter_radius = 3.175/2
 
 # Ball data
-ball_padding = 2
+ball_padding = 1.8
 wall_thickness = 3.5
 ball_diameter = 34
 ball_radius = ball_diameter / 2
@@ -245,7 +245,7 @@ def generate_base_socket():
     box_cutter = wp().box(socket_radius * 2 + ball_padding * 4, socket_radius * 2 + ball_padding * 4, socket_radius * 2) \
         .translate((0, 0, socket_radius)).union(ball)
 
-    inner_cyl = wp().cylinder(5, ball_radius)
+    inner_cyl = wp().cylinder(5, padded_ball_radius)
     top_cyl = wp().cylinder(5, socket_radius).cut(inner_cyl).translate((0, 0, 2.5))
     # lip = wp().cylinder(1.5, socket_radius + 1.5).cut(cq.Workplane("XY").cylinder(2, ball_radius + 0.2)).translate((0, 0, 5.5))
     lip = wp().cylinder(1.25, socket_radius + 1.5).cut(cq.Workplane("XY").cylinder(1.25, ball_radius + 0.3)).translate(
