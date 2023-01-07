@@ -7,7 +7,7 @@ size = (10 - cutout_margin * 2, 10 - cutout_margin * 2)
 cutter_radius = 3.175/2
 
 # Ball data
-ball_padding = 1.8
+ball_padding = 1.5
 wall_thickness = 3.5
 ball_diameter = 34
 ball_radius = ball_diameter / 2
@@ -228,12 +228,13 @@ def flanges():
     flange_pos = [
         75, 165, 295
     ]
-    flange_offset = -1.80
+    flange_offset = -1.63  # -1.68  -1.75
     shape = None
     for angle in flange_pos:
         flange = arc(angle + 120, 30, slot_inner_radius, slot_outer_radius, height=0.9)
         flange = flange.edges(">Z").chamfer(0.2)
         shape = shape.union(flange) if shape is not None else flange
+
 
     return shape.translate((0, 0, flange_offset))
 
@@ -248,9 +249,9 @@ def generate_base_socket():
     inner_cyl = wp().cylinder(5, padded_ball_radius)
     top_cyl = wp().cylinder(5, socket_radius).cut(inner_cyl).translate((0, 0, 2.5))
     # lip = wp().cylinder(1.5, socket_radius + 1.5).cut(cq.Workplane("XY").cylinder(2, ball_radius + 0.2)).translate((0, 0, 5.5))
-    lip = wp().cylinder(1.25, socket_radius + 1.5).cut(cq.Workplane("XY").cylinder(1.25, ball_radius + 0.3)).translate(
+    lip = wp().cylinder(1.25, socket_radius + 2).cut(cq.Workplane("XY").cylinder(1.25, ball_radius - 0.1)).translate(
         (0, 0, 5.5))
-    lip = lip.edges("<Z").chamfer(1.0)
+    lip = lip.edges("<Z").chamfer(1.2)
     top_cyl = top_cyl.union(lip)
 
     sm_screw_holes = screw_hole()\

@@ -12,6 +12,10 @@ def wp(orient="XY"):
     return cq.Workplane(orient)
 
 
+def box(width, length, height, centered=True):
+    return wp().box(width, length, height, centered)
+
+
 def rotate_around_x(shape, angle):
     return shape.rotate((0, 0, 0), (1, 0, 0), angle)
 
