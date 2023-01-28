@@ -50,7 +50,7 @@ sm_lens_x = (_sm_base_w - sm_lens_l) / 2
 sm_lens_y = (sm_base_h - sm_lens_w) / 2
 sm_lens_z = 5.2
 
-sm_offset_z = -18.5
+sm_offset_z = -18
 
 ## BTU
 _skt_hole_dia = ball_diameter + (skt_clearance * 2)
@@ -125,7 +125,7 @@ def btu_mounts():
         b = rotate_around_z(b, math.degrees(-a))
         x = (btu_ring_r - 2) * math.sin(a)
         y = (btu_ring_r - 2) * math.cos(a)
-        b = b.translate((x, y, btu_z_offset + 1))
+        b = b.translate((x, y, btu_z_offset + 1.3))
         result = result.union(b) if result is not None else b
 
     return result
@@ -242,7 +242,7 @@ def flanges():
 def generate_base_socket():
     ball = wp().sphere(padded_ball_radius)
     bottom_cutter = wp().box(_sm_base_w * 2, sm_base_h * 2, sm_base_d * 3).rotate((0, 0, 0), (0, 0, 1), math.pi / 2) \
-        .translate((0, 0, -(19.8 + (sm_base_d / 2))))
+        .translate((0, 0, -(19.5 + (sm_base_d / 2))))
     box_cutter = wp().box(socket_radius * 2 + ball_padding * 4, socket_radius * 2 + ball_padding * 4, socket_radius * 2) \
         .translate((0, 0, socket_radius)).union(ball)
 
