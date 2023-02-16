@@ -1,6 +1,7 @@
 # from jupyter_cadquery.viewer.client import show_object
 
 from cq_shortcuts import *
+from cq_warehouse.thread import IsoThread
 
 cutout_margin = 0.5
 size = (10 - cutout_margin * 2, 10 - cutout_margin * 2)
@@ -238,6 +239,58 @@ def flanges():
 
     return shape.translate((0, 0, flange_offset))
 
+thread_depth = 2
+MM = 1
+IN = 25.4 * MM
+
+
+def screw_thread(d, p, ln, ex, hand):
+    return IsoThread(
+        major_diameter=d,
+        pitch=p,
+        length=ln,
+        external=ex,
+        end_finishes=("fade", "square"),
+        hand=hand,
+    )
+
+
+def generate_cap():
+    inner_cyl = wp().cylinder(5, padded_ball_radius).translate((0, 0, 2.5))
+    thread_cyl = wp().cylinder(5, padded_ball_radius + thread_depth).translate((0, 0, -2.5))
+    top_cyl = wp().cylinder(5, socket_radius).cut(inner_cyl).cut(thread_cyl).translate((0, 0, 3.0))
+    # lip = wp().cylinder(1.5, socket_radius + 1.5).cut(cq.Workplane("XY").cylinder(2, ball_radius + 0.2)).translate((0, 0, 5.5))
+    lip = wp().cylinder(1.25, socket_radius + 2).cut(cq.Workplane("XY").cylinder(1.25, ball_radius - 0.1)).translate(
+        (0, 0, 5.5))
+    lip = lip.edges("<Z").chamfer(1.2)
+    top_cyl = top_cyl.union(lip)
+
+    internal_thread = screw_thread(((padded_ball_radius + thread_depth) * MM * 2), MM * 2, MM * 3, False, "left")
+
+    top_cyl = top_cyl.union(internal_thread)
+
+    # iso_external = iso_external_thread.cq_object.fuse(iso_external_core.val())
+    return top_cyl
+
+
+
+def generate_screw_top():
+    top_ring_cutter = wp().cylinder(5, socket_radius + 1).cut(
+        wp().cylinder(5, padded_ball_radius + thread_depth - 1)).translate((0, 0, 2.5))
+    inner_cyl = wp().cylinder(5, padded_ball_radius - 1)
+    top_cyl = wp().cylinder(5, socket_radius).cut(inner_cyl).cut(top_ring_cutter).translate((0, 0, 0.4))
+    # lip = wp().cylinder(1.5, socket_radius + 1.5).cut(cq.Workplane("XY").cylinder(2, ball_radius + 0.2)).translate((0, 0, 5.5))
+    lip = wp().cylinder(1.25, socket_radius + 2).cut(cq.Workplane("XY").cylinder(1.25, ball_radius - 0.1)).translate(
+        (0, 0, 5.5))
+    # lip = lip.edges("<Z").chamfer(1.2)
+    # iso_external_thread = IsoThread(43, 2.5, 2.5)
+    external_thread = screw_thread(((padded_ball_radius + thread_depth) * MM * 2) - 1, MM * 2, MM * 3, True, "left")
+
+        # 43,   # (padded_ball_radius + thread_depth + 1) * MM * 2,
+        # 2.5,  # * MM,
+        # 2.5 * MM).translate((0, 0, 2.1))
+    top_cyl = top_cyl.union(external_thread)
+    return top_cyl
 
 def generate_base_socket():
     ball = wp().sphere(padded_ball_radius)
@@ -246,13 +299,22 @@ def generate_base_socket():
     box_cutter = wp().box(socket_radius * 2 + ball_padding * 4, socket_radius * 2 + ball_padding * 4, socket_radius * 2) \
         .translate((0, 0, socket_radius)).union(ball)
 
-    inner_cyl = wp().cylinder(5, padded_ball_radius)
-    top_cyl = wp().cylinder(5, socket_radius).cut(inner_cyl).translate((0, 0, 2.5))
-    # lip = wp().cylinder(1.5, socket_radius + 1.5).cut(cq.Workplane("XY").cylinder(2, ball_radius + 0.2)).translate((0, 0, 5.5))
-    lip = wp().cylinder(1.25, socket_radius + 2).cut(cq.Workplane("XY").cylinder(1.25, ball_radius - 0.1)).translate(
-        (0, 0, 5.5))
-    lip = lip.edges("<Z").chamfer(1.2)
-    top_cyl = top_cyl.union(lip)
+    # top_ring_cutter = wp().cylinder(5, socket_radius).cut(wp().cylinder(5, padded_ball_radius + thread_depth)).translate((0, 0, 2.5))
+    # inner_cyl = wp().cylinder(5, padded_ball_radius)
+    top_cyl = generate_screw_top()
+    # # lip = wp().cylinder(1.5, socket_radius + 1.5).cut(cq.Workplane("XY").cylinder(2, ball_radius + 0.2)).translate((0, 0, 5.5))
+    # lip = wp().cylinder(1.25, socket_radius + 2).cut(cq.Workplane("XY").cylinder(1.25, ball_radius - 0.1)).translate(
+    #     (0, 0, 5.5))
+    # # lip = lip.edges("<Z").chamfer(1.2)
+    # iso_external_thread = IsoThread(
+    #     major_diameter=(padded_ball_radius + thread_depth + 1) * MM * 2,
+    #     pitch=2.5 * MM,
+    #     length=2.5 * MM,
+    #     external=True,
+    #     end_finishes=("fade", "square"),
+    #     hand="left",
+    # ).translate((0, 0, 2.1))
+    # top_cyl = top_cyl.union(iso_external_thread)
 
     sm_screw_holes = screw_hole()\
         .translate((0, sm_screw_dist / 2, 0))\
@@ -298,4 +360,18 @@ def generate_bearing_socket():
 
 
 # Render the solid
-show_object(generate_btu_socket())
+
+# outer_ring = wp().cylinder(5, 23).cut(
+#         wp().cylinder(6, 20)).translate((0, 0, 2.5))
+#
+# inner_ring = wp().cylinder(5, 18).cut(
+#         wp().cylinder(6, 16)).translate((0, 0, 2.5))
+# inner = inner_ring.union(screw_thread(39, 2.5, 5, True, "right")).translate((0, 0, 10))
+# outer = outer_ring.union(screw_thread(40, 2.5, 5, False, "right"))
+
+# show_object(inner.translate((0, 0, 10)))
+# show_object(outer)
+# show_object(inner)
+
+# show_object(generate_cap())
+show_object(generate_screw_top())
