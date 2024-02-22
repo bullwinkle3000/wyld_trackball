@@ -1,7 +1,7 @@
 # from jupyter_cadquery.viewer.client import show_object
 
 from cq_shortcuts import *
-from cq_warehouse.thread import IsoThread
+# from cq_warehouse.thread import IsoThread
 
 cutout_margin = 0.5
 size = (10 - cutout_margin * 2, 10 - cutout_margin * 2)
@@ -9,7 +9,6 @@ cutter_radius = 3.175/2
 
 # Ball data
 ball_padding = 1.5
-wall_thickness = 3.5
 ball_diameter = 34
 ball_radius = ball_diameter / 2
 
@@ -18,14 +17,14 @@ PI3 = PI2 / 3
 PI6 = PI3 / 2
 
 # socket
-skt_clearance = 1.5
-skt_wall_thick = 3.5
+socket_clearance = 1
+socket_wall_thickness = 4
 
-_skt_hole_dia = ball_diameter + (skt_clearance * 2)
-_skt_dia = _skt_hole_dia + (skt_wall_thick * 2)
+socket_hole_diameter = ball_diameter + (ball_padding * 2)
+socket_diameter = socket_hole_diameter + (socket_wall_thickness * 2)
 
-padded_ball_radius = ball_radius + ball_padding
-socket_radius = ball_radius + ball_padding + wall_thickness
+padded_ball_radius = socket_hole_diameter / 2
+socket_radius = socket_diameter / 2
 
 # Sensor mount data
 sm_screw_dist = 24
@@ -54,7 +53,7 @@ sm_lens_z = 5.2
 sm_offset_z = -18
 
 ## BTU
-_skt_hole_dia = ball_diameter + (skt_clearance * 2)
+_skt_hole_dia = ball_diameter + (socket_clearance * 2)
 
 btu_color = "white"  ## The color of rendered BTUs
 btu_hle_tol = 0.25  ## The tolerance around the BTU for the holes
@@ -80,7 +79,8 @@ _btu_head_top = _btu_base_dpth + _btu_head_dpth
 _btu_ball_height = (btu_ball_dia / 2) - _btu_ball_z_offset
 
 # btu_ring_r = (_skt_hole_dia / 2) + (_btu_ball_height - 1) / 2
-btu_ring_r = 19
+btu_ring_r = 17.5
+btu_z_offset = -6.9
 
 
 def screw_hole():
@@ -89,7 +89,7 @@ def screw_hole():
 
 def sensor_mount():
     sm_base = wp().box(_sm_base_w, sm_base_h, sm_base_d).rotate((0, 0, 0), (0, 0, 1), 90).edges("|Z").fillet(8.0)
-    bottom_hole = wp().box(4, 4, 6).translate((0, -2, 0)).union(wp().cylinder(6, 2))
+    bottom_hole = wp().box(4, 4, 6).translate((0, -2, 0)).union(wp().cylinder(6, 2)).rotate((0, 0, 0), (0, 0, 1), 180)
 
     result = sm_base.cut(bottom_hole).translate((0, 0, sm_offset_z))
     result = rotate_around_z(result, 180)
@@ -111,7 +111,7 @@ def btu():
         .union(btu_ball().translate((0, 0, (_btu_ball_z_offset + _btu_head_dpth) * -1)))
 
 
-btu_z_offset = -10.9
+
 
 
 def btu_mounts():
@@ -137,14 +137,31 @@ def btus():
 
     for i in range(3):
         a = i * PI3
-        b = rotate_around_x(btu(), btu_tilt)
+        b = rotate_around_z(btu(), 90)
+        b = rotate_around_x(b, btu_tilt)
         b = rotate_around_z(b, math.degrees(-a))
         x = (btu_ring_r + 0.5) * math.sin(a)
         y = (btu_ring_r + 0.5) * math.cos(a)
         b = b.translate((x, y, btu_z_offset))
         result = result.union(b) if result is not None else b
 
-    return result
+    return result  # rotate_around_z(result, 30)
+
+def ceramic_bearings():
+    result = None
+
+    for i in range(3):
+        a = i * PI3
+        b = rotate_around_z(wp().cylinder(3, 1.52), 90)
+        # b = rotate_around_z(wp().sphere(1.52), 90)
+        b = rotate_around_x(b, btu_tilt)
+        b = rotate_around_z(b, math.degrees(-a))
+        x = (btu_ring_r + 0.5) * math.sin(a)
+        y = (btu_ring_r + 0.5) * math.cos(a)
+        b = b.translate((x, y, btu_z_offset))
+        result = result.union(b) if result is not None else b
+
+    return result  # rotate_around_z(result, 30)
 
 
 def top_plate():
@@ -154,8 +171,8 @@ def top_plate():
     _tp_hole_r_top = math.exp(math.log(math.exp(math.log(ball_diameter / 2) * 2) - math.exp(math.log(tp_thickness) * 2)) * 0.5) + tp_clearance
     _tp_hole_r_btn = (ball_diameter / 2) + (tp_clearance * 2)
 
-    result = wp().cylinder(tp_thickness, _skt_dia / 2)\
-        .union(wp().cylinder(tp_rim_size, (_skt_dia + tp_rim_size + 1) / 2).translate((0, 0, 3.5)))
+    result = wp().cylinder(tp_thickness, socket_radius / 2)\
+        .union(wp().cylinder(tp_rim_size, (socket_diameter + tp_rim_size + 1) / 2).translate((0, 0, 3.5)))
     result = result.cut(wp().cylinder(tp_thickness + 1, _tp_hole_r_top / 2).translate((0, 0, -0.5)))
     return result
 
@@ -244,15 +261,15 @@ MM = 1
 IN = 25.4 * MM
 
 
-def screw_thread(d, p, ln, ex, hand):
-    return IsoThread(
-        major_diameter=d,
-        pitch=p,
-        length=ln,
-        external=ex,
-        end_finishes=("fade", "square"),
-        hand=hand,
-    )
+# def screw_thread(d, p, ln, ex, hand):
+#     return IsoThread(
+#         major_diameter=d,
+#         pitch=p,
+#         length=ln,
+#         external=ex,
+#         end_finishes=("fade", "square"),
+#         hand=hand,
+#     )
 
 
 def generate_cap():
@@ -265,9 +282,9 @@ def generate_cap():
     lip = lip.edges("<Z").chamfer(1.2)
     top_cyl = top_cyl.union(lip)
 
-    internal_thread = screw_thread(((padded_ball_radius + thread_depth) * MM * 2), MM * 2, MM * 3, False, "left")
+    # internal_thread = screw_thread(((padded_ball_radius + thread_depth) * MM * 2), MM * 1.5, MM * 3, False, "left")
 
-    top_cyl = top_cyl.union(internal_thread)
+    # top_cyl = top_cyl.union(internal_thread)
 
     # iso_external = iso_external_thread.cq_object.fuse(iso_external_core.val())
     return top_cyl
@@ -276,25 +293,26 @@ def generate_cap():
 
 def generate_screw_top():
     top_ring_cutter = wp().cylinder(5, socket_radius + 1).cut(
-        wp().cylinder(5, padded_ball_radius + thread_depth - 1)).translate((0, 0, 2.5))
-    inner_cyl = wp().cylinder(5, padded_ball_radius - 1)
-    top_cyl = wp().cylinder(5, socket_radius).cut(inner_cyl).cut(top_ring_cutter).translate((0, 0, 0.4))
+        wp().cylinder(5, padded_ball_radius + thread_depth - 1.5)).translate((0, 0, 2.5))
+    inner_cyl = wp().cylinder(2, padded_ball_radius - 1.2)
+    top_cyl = wp().cylinder(2, socket_radius).cut(inner_cyl).translate((0, 0, 0.4))
+    top_cyl = top_cyl.edges().fillet(0.6)
     # lip = wp().cylinder(1.5, socket_radius + 1.5).cut(cq.Workplane("XY").cylinder(2, ball_radius + 0.2)).translate((0, 0, 5.5))
     lip = wp().cylinder(1.25, socket_radius + 2).cut(cq.Workplane("XY").cylinder(1.25, ball_radius - 0.1)).translate(
         (0, 0, 5.5))
     # lip = lip.edges("<Z").chamfer(1.2)
     # iso_external_thread = IsoThread(43, 2.5, 2.5)
-    external_thread = screw_thread(((padded_ball_radius + thread_depth) * MM * 2) - 1, MM * 2, MM * 3, True, "left")
+    # external_thread = screw_thread(((padded_ball_radius + thread_depth) * MM * 2) - 1, MM * 1.5, MM * 3, True, "left")
 
         # 43,   # (padded_ball_radius + thread_depth + 1) * MM * 2,
         # 2.5,  # * MM,
         # 2.5 * MM).translate((0, 0, 2.1))
-    top_cyl = top_cyl.union(external_thread)
+    # top_cyl = top_cyl.union(external_thread)
     return top_cyl
 
 def generate_base_socket():
     ball = wp().sphere(padded_ball_radius)
-    bottom_cutter = wp().box(_sm_base_w * 2, sm_base_h * 2, sm_base_d * 3).rotate((0, 0, 0), (0, 0, 1), math.pi / 2) \
+    bottom_cutter = wp().box(_sm_base_w * 2, sm_base_h * 2, sm_base_d * 4).rotate((0, 0, 0), (0, 0, 1), math.pi / 2) \
         .translate((0, 0, -(19.5 + (sm_base_d / 2))))
     box_cutter = wp().box(socket_radius * 2 + ball_padding * 4, socket_radius * 2 + ball_padding * 4, socket_radius * 2) \
         .translate((0, 0, socket_radius)).union(ball)
@@ -332,7 +350,7 @@ def generate_base_socket():
     socket = socket.union(top_plate())
     socket = socket.cut(box_cutter)
     socket = socket.union(top_cyl)
-    socket = socket.union(flanges())
+    # socket = socket.union(flanges())
     return socket
 
 
@@ -345,6 +363,15 @@ def generate_btu_socket():
 
     return socket
 
+
+def generate_ceramic_socket():
+
+    socket = generate_base_socket()
+    # socket = socket.union(btu_mounts())
+    socket = socket.cut(ceramic_bearings())
+    socket = rotate_around_z(socket, -90)
+
+    return socket
 
 def generate_bearing_socket():
 
@@ -374,4 +401,7 @@ def generate_bearing_socket():
 # show_object(inner)
 
 # show_object(generate_cap())
-show_object(generate_screw_top())
+show_object(generate_ceramic_socket())
+
+# obj = generate_btu_socket()
+# show_object(btus())

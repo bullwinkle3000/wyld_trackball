@@ -16,6 +16,17 @@ def box(width, length, height, centered=True):
     return wp().box(width, length, height, centered)
 
 
+def rotate(shape, angles):
+    if angles[0] != 0:
+        shape = rotate_around_x(shape, angles[0])
+    if angles[1] != 0:
+        shape = rotate_around_y(shape, angles[1])
+    if angles[2] != 0:
+        shape = rotate_around_z(shape, angles[2])
+
+    return shape
+
+
 def rotate_around_x(shape, angle):
     return shape.rotate((0, 0, 0), (1, 0, 0), angle)
 
