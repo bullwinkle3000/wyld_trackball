@@ -1,4 +1,9 @@
 # from jupyter_cadquery.viewer.client import show_object
+from build123d import *
+from build123d import *
+import cadquery as cq
+from ocp_vscode import show, show_object, reset_show, set_port, set_defaults, get_defaults
+set_port(3939)
 
 from cq_shortcuts import *
 # from cq_warehouse.thread import IsoThread
@@ -82,6 +87,7 @@ _btu_ball_height = (btu_ball_dia / 2) - _btu_ball_z_offset
 btu_ring_r = 17.5
 btu_z_offset = -6.9
 
+bottom_rotate = -10
 
 def screw_hole():
     return wp().cylinder(sm_screw_dpth, sm_screw_dia_btm / 2)
@@ -161,7 +167,7 @@ def ceramic_bearings():
         b = b.translate((x, y, btu_z_offset))
         result = result.union(b) if result is not None else b
 
-    return result  # rotate_around_z(result, 30)
+    return rotate_around_x(result, bottom_rotate)
 
 
 def top_plate():
@@ -271,16 +277,31 @@ IN = 25.4 * MM
 #         hand=hand,
 #     )
 
+def access_holes():
+    result = None
+    for i in range(3):
+        a = (PI3 / 2) + (i * PI3)
+        b = rotate_around_z(wp().cylinder(10, 7), 90)
+        # b = rotate_around_z(wp().sphere(1.52), 90)
+        b = rotate_around_x(b, btu_tilt)
+        b = rotate_around_z(b, math.degrees(-a))
+        x = (btu_ring_r + 0.5) * math.sin(a)
+        y = (btu_ring_r + 0.5) * math.cos(a)
+        b = b.translate((x, y, btu_z_offset))
+        result = result.union(b) if result is not None else b
+
+    return rotate_around_x(result, bottom_rotate / 2)
 
 def generate_cap():
     inner_cyl = wp().cylinder(5, padded_ball_radius).translate((0, 0, 2.5))
     thread_cyl = wp().cylinder(5, padded_ball_radius + thread_depth).translate((0, 0, -2.5))
-    top_cyl = wp().cylinder(5, socket_radius).cut(inner_cyl).cut(thread_cyl).translate((0, 0, 3.0))
+    top_cyl = cq.Solid.makeCone(socket_radius, socket_radius + 2, 5)
+    top_cyl = top_cyl.cut(inner_cyl).cut(thread_cyl).translate((0, 0, 3.0))
     # lip = wp().cylinder(1.5, socket_radius + 1.5).cut(cq.Workplane("XY").cylinder(2, ball_radius + 0.2)).translate((0, 0, 5.5))
-    lip = wp().cylinder(1.25, socket_radius + 2).cut(cq.Workplane("XY").cylinder(1.25, ball_radius - 0.1)).translate(
-        (0, 0, 5.5))
-    lip = lip.edges("<Z").chamfer(1.2)
-    top_cyl = top_cyl.union(lip)
+    # lip = wp().cylinder(1.25, socket_radius + 2).cut(cq.Workplane("XY").cylinder(1.25, ball_radius - 0.1)).translate(
+    #     (0, 0, 5.5))
+    # lip = lip.edges("<Z").chamfer(1.2)
+    # top_cyl = top_cyl.union(lip)
 
     # internal_thread = screw_thread(((padded_ball_radius + thread_depth) * MM * 2), MM * 1.5, MM * 3, False, "left")
 
@@ -290,13 +311,34 @@ def generate_cap():
     return top_cyl
 
 
+def screw_base():
+    inner_wall_cut = wp().cylinder(4, padded_ball_radius).translate((0, 0, 0))
+
+    return wp().cylinder(3, socket_radius).cut(inner_wall_cut).translate((0, 0, 1.4))  # .edges(">Z").fillet(0.6)
+    # top_cyl = top_cyl.edges().fillet(0.6)
+    # lip = wp().cylinder(1.5, socket_radius + 1.5).cut(cq.Workplane("XY").cylinder(2, ball_radius + 0.2)).translate((0, 0, 5.5))
+    # lip = wp().cylinder(1.25, socket_radius + 2).cut(cq.Workplane("XY").cylinder(1.25, ball_radius - 0.1)).translate(
+    #     (0, 0, 5.5))
+    
+    # return top_cyl.cut(inner_wall_cut)
 
 def generate_screw_top():
-    top_ring_cutter = wp().cylinder(5, socket_radius + 1).cut(
-        wp().cylinder(5, padded_ball_radius + thread_depth - 1.5)).translate((0, 0, 2.5))
-    inner_cyl = wp().cylinder(2, padded_ball_radius - 1.2)
-    top_cyl = wp().cylinder(2, socket_radius).cut(inner_cyl).translate((0, 0, 0.4))
-    top_cyl = top_cyl.edges().fillet(0.6)
+    # top_ring_cutter = wp().cylinder(5, socket_radius + 1).cut(
+    #     wp().cylinder(5, padded_ball_radius + thread_depth - 1.5)).translate((0, 0, 2.5))
+    
+    # top_cone = cq.Solid.makeCone(socket_radius + 2, socket_radius, 5)
+        
+
+    inner_wall_cut = wp().cylinder(2, padded_ball_radius).translate((0, 0, -1))
+    # inner_wall_cut.location.position = (0, 0, -1)
+    # inner_cyl = Cylinder(2, padded_ball_radius - 1.25)
+    # inner_cyl.location.position = (0, 0, 2)
+    inner_cyl = wp().cylinder(2, padded_ball_radius - 1.25).translate((0, 0, 1))
+    # top_cone.cut(inner_cyl)
+    # top_cone.location.position = (0, 0, 1.4)
+    top_cyl = wp().cylinder(4, socket_radius + 1).edges(">Z").chamfer(3)
+    top_cyl = top_cyl.cut(inner_cyl).cut(inner_wall_cut).translate((0, 0, 1.4)).edges(">Z").fillet(0.6)
+    # top_cyl = wp().cylinder(5, socket_radius).edges(">Z").chamfer(1)
     # lip = wp().cylinder(1.5, socket_radius + 1.5).cut(cq.Workplane("XY").cylinder(2, ball_radius + 0.2)).translate((0, 0, 5.5))
     lip = wp().cylinder(1.25, socket_radius + 2).cut(cq.Workplane("XY").cylinder(1.25, ball_radius - 0.1)).translate(
         (0, 0, 5.5))
@@ -310,6 +352,7 @@ def generate_screw_top():
     # top_cyl = top_cyl.union(external_thread)
     return top_cyl
 
+
 def generate_base_socket():
     ball = wp().sphere(padded_ball_radius)
     bottom_cutter = wp().box(_sm_base_w * 2, sm_base_h * 2, sm_base_d * 4).rotate((0, 0, 0), (0, 0, 1), math.pi / 2) \
@@ -319,7 +362,7 @@ def generate_base_socket():
 
     # top_ring_cutter = wp().cylinder(5, socket_radius).cut(wp().cylinder(5, padded_ball_radius + thread_depth)).translate((0, 0, 2.5))
     # inner_cyl = wp().cylinder(5, padded_ball_radius)
-    top_cyl = generate_screw_top()
+    top_cyl = generate_screw_top().translate((0, 0, 5))
     # # lip = wp().cylinder(1.5, socket_radius + 1.5).cut(cq.Workplane("XY").cylinder(2, ball_radius + 0.2)).translate((0, 0, 5.5))
     # lip = wp().cylinder(1.25, socket_radius + 2).cut(cq.Workplane("XY").cylinder(1.25, ball_radius - 0.1)).translate(
     #     (0, 0, 5.5))
@@ -346,10 +389,11 @@ def generate_base_socket():
     sensor = sensor.translate((0, 0, 0.1))
     socket = socket.union(sensor)
     socket = socket.cut(sm_screw_holes)
-    socket = rotate_around_x(socket, -5)
+    socket = rotate_around_x(socket, bottom_rotate)
     socket = socket.union(top_plate())
     socket = socket.cut(box_cutter)
     socket = socket.union(top_cyl)
+    socket = socket.union(screw_base())
     # socket = socket.union(flanges())
     return socket
 
@@ -369,6 +413,7 @@ def generate_ceramic_socket():
     socket = generate_base_socket()
     # socket = socket.union(btu_mounts())
     socket = socket.cut(ceramic_bearings())
+    socket = socket.cut(access_holes())
     socket = rotate_around_z(socket, -90)
 
     return socket
@@ -400,8 +445,8 @@ def generate_bearing_socket():
 # show_object(outer)
 # show_object(inner)
 
-# show_object(generate_cap())
 show_object(generate_ceramic_socket())
+# test_123()
 
 # obj = generate_btu_socket()
 # show_object(btus())
