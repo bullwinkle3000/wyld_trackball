@@ -14,7 +14,7 @@ cutter_radius = 3.175/2
 
 # Ball data
 ball_padding = 1.5
-ball_diameter = 34
+ball_diameter = 25
 ball_radius = ball_diameter / 2
 
 PI2 = math.pi * 2
@@ -55,7 +55,7 @@ sm_lens_x = (_sm_base_w - sm_lens_l) / 2
 sm_lens_y = (sm_base_h - sm_lens_w) / 2
 sm_lens_z = 5.2
 
-sm_offset_z = -18
+sm_offset_z = -(ball_radius + 1)
 
 ## BTU
 _skt_hole_dia = ball_diameter + (socket_clearance * 2)
@@ -68,11 +68,11 @@ btu_head_dia = 14.5  ## The diameter of the head portion of the BTU
 btu_head_dpth = 1  ## The depth of the head portion of the BTU
 btu_ball_dia = 8.4  ## The diameter of the ball in the BTU
 btu_ball_z_offset = -0.2  ## The z-offset of the BTU ball off the head
-btu_z_mult = 1.3
+# btu_z_mult = 1.3
 
 btu_count = 3
-btu_tilt = 61
-btu_ring_z = 6.3
+btu_tilt = 60
+# btu_ring_z = 6.3
 
 _btu_base_dia = btu_base_dia + (btu_hle_tol * 2)
 _btu_base_dpth = btu_base_dpth + btu_hle_tol
@@ -83,9 +83,14 @@ _btu_ball_z_offset = btu_ball_dia * btu_ball_z_offset
 _btu_head_top = _btu_base_dpth + _btu_head_dpth
 _btu_ball_height = (btu_ball_dia / 2) - _btu_ball_z_offset
 
+ceramic_sphere_r = 1.5
+
 # btu_ring_r = (_skt_hole_dia / 2) + (_btu_ball_height - 1) / 2
-btu_ring_r = 16.75  # 17.5
-btu_z_offset = -6.9
+btu_ring_angle = 20
+btu_ring_angle_radians = math.radians(btu_ring_angle)
+btu_base_r = padded_ball_radius
+btu_ring_r = math.cos(btu_ring_angle_radians) * btu_base_r #  16.75  # 17.5
+btu_z_offset = -(math.sin(btu_ring_angle_radians) * btu_base_r) #  6.9
 
 bottom_rotate = -10
 
@@ -132,7 +137,7 @@ def btu_mounts():
         b = wp().cylinder(4, 8.5)
         b = b.cut(wp().cylinder(6, 5))
         b = rotate_around_z(b, 90)
-        b = rotate_around_x(b, btu_tilt)
+        b = rotate_around_x(b, 90 - btu_tilt)
         b = rotate_around_z(b, math.degrees(-a))
         x = (btu_ring_r - 2) * math.sin(a)
         y = (btu_ring_r - 2) * math.cos(a)
@@ -168,7 +173,7 @@ def ceramic_bearings():
         hole = rotate_around_z(wp().cylinder(5, 0.65), 90).translate((0, 0, -0.5))
         b = b.union(hole)
         # b = rotate_around_z(wp().sphere(1.52), 90)
-        b = rotate_around_x(b, btu_tilt)
+        b = rotate_around_x(b, 90 - btu_ring_angle)
         b = rotate_around_z(b, math.degrees(-a))
         x = (btu_ring_r + 1) * math.sin(a)
         y = (btu_ring_r + 1) * math.cos(a)
@@ -304,7 +309,7 @@ def access_hole(w=12, h=14):
         .vertices()
         .fillet(5)
         .reset()
-        .moved(cq.Location(cq.Vector(0, 0, 20)))
+        .moved(cq.Location(cq.Vector(0, 0, 30)))
     )
 
     result = (
@@ -317,18 +322,21 @@ def access_hole(w=12, h=14):
 
 def access_holes():
     result = None
+    base_w = socket_radius * 0.75
+    base_h = base_w * 0.75
+    
     for i in range(3):
         a = (PI3 / 2) + (i * PI3)
 
         if i == 1:
-            b = access_hole(w=12, h=8)
+            b = access_hole(w=base_w * 0.75, h=base_h * 0.75)
         else:
-            b = access_hole()
+            b = access_hole(w=base_w, h=base_h)
         b = rotate_around_y(b, 180)
-        b = rotate_around_x(b, btu_tilt + 15)
+        b = rotate_around_x(b, 90 - btu_ring_angle)
         b = rotate_around_z(b, math.degrees(-a))
-        x = (btu_ring_r - 6) * math.sin(a)
-        y = (btu_ring_r - 6) * math.cos(a)
+        x = (btu_ring_r * 0.66) * math.sin(a)
+        y = (btu_ring_r * 0.66) * math.cos(a)
 
         if i == 1:
             b = b.translate((x, y, btu_z_offset + 1))
@@ -400,7 +408,7 @@ def nubs(scale, distance):
 def generate_base_socket():
     ball = wp().sphere(padded_ball_radius)
     bottom_cutter = wp().box(_sm_base_w * 2, sm_base_h * 2, sm_base_d * 4).rotate((0, 0, 0), (0, 0, 1), math.pi / 2) \
-        .translate((0, 0, -(19.5 + (sm_base_d / 2))))
+        .translate((0, 0, -((socket_radius - 2) + (sm_base_d / 2))))
     box_cutter = wp().box(socket_radius * 2 + ball_padding * 4, socket_radius * 2 + ball_padding * 4, socket_radius * 2) \
         .translate((0, 0, socket_radius)).union(ball)
 
