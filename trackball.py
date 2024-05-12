@@ -14,7 +14,11 @@ cutter_radius = 3.175/2
 
 # Ball data
 ball_padding = 1.5
-ball_diameter = 25
+
+# ball_diameter = 25  # small poolball
+ball_diameter = 34  # perixx %ball
+# ball_diameter = 57  # pool ball%
+
 ball_radius = ball_diameter / 2
 
 PI2 = math.pi * 2
@@ -39,8 +43,8 @@ sm_screw_mgn = 1.1
 sm_screw_dpth = 15
 sm_screw_cap_dia = sm_screw_mgn + sm_screw_dia_btm
 
-sm_base_h = 21
-sm_base_l = 28.25
+sm_base_h = 25     #  42 #  21
+sm_base_l = 28.25  #  42 #  28.25
 sm_skt_dia = 9
 sm_base_d = 1.5
 sm_skt_z_offset = 2.6
@@ -62,11 +66,11 @@ _skt_hole_dia = ball_diameter + (socket_clearance * 2)
 
 btu_color = "white"  ## The color of rendered BTUs
 btu_hle_tol = 0.25  ## The tolerance around the BTU for the holes
-btu_base_dia = 12.7  ## The diameter of the stem of the BTU
-btu_base_dpth = 8  ## The depth of the stem of the BTU
-btu_head_dia = 14.5  ## The diameter of the head portion of the BTU
+btu_base_dia = 7.5  ## The diameter of the stem of the BTU
+btu_base_dpth = 4  ## The depth of the stem of the BTU
+btu_head_dia = 9  ## The diameter of the head portion of the BTU
 btu_head_dpth = 1  ## The depth of the head portion of the BTU
-btu_ball_dia = 8.4  ## The diameter of the ball in the BTU
+btu_ball_dia = 4  ## The diameter of the ball in the BTU
 btu_ball_z_offset = -0.2  ## The z-offset of the BTU ball off the head
 # btu_z_mult = 1.3
 
@@ -92,7 +96,8 @@ btu_base_r = padded_ball_radius
 btu_ring_r = math.cos(btu_ring_angle_radians) * btu_base_r #  16.75  # 17.5
 btu_z_offset = -(math.sin(btu_ring_angle_radians) * btu_base_r) #  6.9
 
-bottom_rotate = -10
+# bottom_rotate = -10 # standard
+bottom_rotate = 0
 
 def screw_hole():
     return wp().cylinder(sm_screw_dpth, sm_screw_dia_btm / 2)
@@ -114,19 +119,24 @@ def sensor_mount_pmw3610():
     # result = rotate_around_z(result, 180)
     return result, bottom_hole.translate((0, 0, sm_offset_z))
 
-def btu():
+def btu(hole=True, extend=False):
+    slop = 0 if hole else 0.3
+    extension = 2 if extend else 0
     def btu_base():
-        return wp().cylinder(_btu_base_dpth, _btu_base_dia / 2)
+        return wp().cylinder(_btu_base_dpth + extension, (_btu_base_dia / 2) - slop)
 
     def btu_head():
-        return wp().cylinder(_btu_base_dpth + _btu_ball_height, _btu_head_dia / 2)
+        return wp().cylinder(_btu_head_dpth , (_btu_head_dia / 2) - slop)
 
     def btu_ball():
         return wp().sphere(btu_ball_dia / 2)
 
-    return btu_base()\
-        .union(btu_head().translate((0, 0, _btu_base_dpth)))\
-        .union(btu_ball().translate((0, 0, (_btu_ball_z_offset + _btu_head_dpth) * -1)))
+    head_offset = -((_btu_base_dpth / 2) - (_btu_head_dpth / 2))
+    btu_result = btu_base()\
+        .union(btu_head().translate((0, 0, head_offset)))
+            
+    return rotate_around_y(btu_result, 178)
+            
 
 
 def btu_mounts():
@@ -161,6 +171,26 @@ def btus():
         result = result.union(b) if result is not None else b
 
     return result  # rotate_around_z(result, 30)
+
+def new_btus(hole=True, extend=False):
+    result = None
+
+    for i in range(3):
+        a = i * PI3
+        # b = btu()
+        b = rotate_around_z(btu(hole=hole, extend=extend), 90)
+
+        hole = rotate_around_z(wp().cylinder(5, 0.65), 90).translate((0, 0, -0.5))
+        # b = b.union(hole)
+        # b = rotate_around_z(wp().sphere(1.52), 90)
+        b = rotate_around_x(b, 90 - btu_ring_angle)
+        b = rotate_around_z(b, math.degrees(-a))
+        x = (btu_ring_r + 1.72) * math.sin(a)
+        y = (btu_ring_r + 1.72) * math.cos(a)
+        b = b.translate((x, y, btu_z_offset))
+        result = result.union(b) if result is not None else b
+
+    return rotate_around_x(result, bottom_rotate)
 
 def ceramic_bearings():
     result = None
@@ -378,7 +408,7 @@ def socket_top():
 def generate_interface_plate():
     plate_cut = wp().cylinder(6, socket_radius + 0.25)
     
-    return wp().cylinder(3, socket_radius + 4).cut(plate_cut).cut(nubs(1.35, socket_radius + 1.2).translate((0, 0, -1)))
+    return rotate_around_z(wp().cylinder(3, socket_radius + 4).cut(plate_cut).cut(nubs(1.35, socket_radius + 1.2).translate((0, 0, -1))), -90)
 
 def generate_screw_top():
     top_cyl = wp().cylinder(6.5, socket_radius + 2).edges(">Z").chamfer(3)
@@ -405,6 +435,13 @@ def nubs(scale, distance):
     
     return nubs.edges(">Z").chamfer(0.4)
 
+
+def generate_cutter():
+    return wp().sphere(socket_radius).union(new_btus(extend=True))
+    # cutter = wp().cylinder(20, socket_radius).union(wp().sphere(socket_radius).translate([0, 0, 10])).union(wp().sphere(socket_radius).translate([0, 0, -10]))
+    # return cutter
+    
+    
 def generate_base_socket():
     ball = wp().sphere(padded_ball_radius)
     bottom_cutter = wp().box(_sm_base_w * 2, sm_base_h * 2, sm_base_d * 4).rotate((0, 0, 0), (0, 0, 1), math.pi / 2) \
@@ -448,7 +485,7 @@ def generate_base_socket():
     # socket = socket.union(top_cyl)
     socket = socket.union(socket_top().translate((0, 0, 0.1)))
     # socket = socket.cut(ball)
-    socket = socket.union(nubs(1, -(socket_radius)).translate((0,0, -2)))
+    # socket = socket.union(nubs(1, -(socket_radius)).translate((0,0, -2)))
     # socket = socket.cut(slots())
     socket = socket.cut(access_holes())
     return socket
@@ -457,8 +494,8 @@ def generate_base_socket():
 def generate_btu_socket():
 
     socket = generate_base_socket()
-    socket = socket.union(btu_mounts())
-    socket = socket.cut(btus())
+    # socket = socket.union(btu_mounts())
+    socket = socket.cut(new_btus())
     socket = rotate_around_z(socket, -90)
 
     return socket
@@ -486,20 +523,43 @@ def generate_bearing_socket():
 
     return socket
 
+
+def generate_ceramic_mounts():
+    btus = new_btus(hole=False).cut(ceramic_bearings())
+    return btus
+
 # base = screw_base()
-socket = generate_ceramic_socket()
-cap = generate_screw_top()
-mount, throwaway = sensor_mount_pmw3610()
-interface = generate_interface_plate()
+# socket = generate_ceramic_socket()
+socket_btu = generate_btu_socket()
+ceramic_mounts = generate_ceramic_mounts()
 
-show_object(socket)
-show_object(cap.translate((0, 0, 15)))
-show_object(interface.translate((0, 0, 8)))
+# cap = generate_screw_top()
+# mount, throwaway = sensor_mount_pmw3610()
+# interface = generate_interface_plate()
+cutter = generate_cutter()
 
-cq.exporters.export(socket, "./socket_ceramic_spheres.stl")
-cq.exporters.export(cap, "./cap_for_socket.stl")
-cq.exporters.export(mount, "./sensor_mount_pmw3610.stl")
-cq.exporters.export(interface, "./interface_plate.stl")
+# show(socket_btu)
+
+show(cutter)
+# show(cap.translate((0, 0, 15)))
+# show(interface.translate((0, 0, 8)))
+# show(cutter.translate([0, 0, 100]))
+
+# cq.exporters.export(socket, "./socket_ceramic_spheres.stl")
+# cq.exporters.export(socket, "./socket_ceramic_spheres.step")
+cq.exporters.export(socket_btu, "./socket_btu.stl")
+cq.exporters.export(socket_btu, "./socket_btu.step")
+cq.exporters.export(ceramic_mounts, "./ceramic_mounts.stl")
+cq.exporters.export(ceramic_mounts, "./ceramic_mounts.step")
+# cq.exporters.export(cap, "./cap_for_socket.stl")
+# cq.exporters.export(cap, "./cap_for_socket.step")
+# cq.exporters.export(mount, "./sensor_mount_pmw3610.stl")
+# cq.exporters.export(mount, "./sensor_mount_pmw3610.step")
+# cq.exporters.export(interface, "./interface_plate.stl")
+# cq.exporters.export(interface, "./interface_plate.step")
+cq.exporters.export(cutter, "./cutter.stl")
+cq.exporters.export(cutter, "./cutter.step")
+# cq.exporters.export(socket.union(interface), "./full_socket.stl")
 
 # cq.exporters.export(base, "./screw_base.amf", tolerance=0.01, angularTolerance=0.1)
 # obj = generate_btu_socket()

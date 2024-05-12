@@ -1,5 +1,8 @@
 from cq_shortcuts import *
 from math import sin, cos, pi
+from ocp_vscode import show, show_object, reset_show, set_port, set_defaults, get_defaults
+
+set_port(3939)
 
 SEGMENTS = 48
 
@@ -41,7 +44,7 @@ def block_bumps(wires):
     s = wp().rarray(pitch, pitch, lbumps, wbumps, True).circle(bumpDiam / 2.0)
 
     # s = s.intersect(wires)
-    return new_wires
+    return s
 
 def flat_bottom_block():
     #####
@@ -426,5 +429,42 @@ def puck_holder():
     return cone
 
 
-show_object(puck_holder())
+def puck_plate():
+    offset = 19.55
+    border = 5
+    border_half = border / 2
+    width = offset * 5
+    height = offset * 4
+
+    # plate = box(width, height, 2)
+
+    plate = wp().box(width, height, 1)  # .faces('>Z').rect(width, height).workplane(offset=2).rect(width / 2 + 5, height / 2 + 5).loft(combine=True)
+
+    holes = [
+        [offset, 0, 0],
+        [0, offset, 0],
+        [-offset, 0, 0],
+        [0, -offset, 0]
+    ]
+
+    plate = plate.edges("|Z").fillet(25)
+    plate = plate.edges(">Z").chamfer(0.7)
+    plate = plate.faces(">Z").workplane().rect(38.1, 38.1, forConstruction=True).vertices().cboreHole(2.2, 3, .5, 5)
+    return plate
+
+
+def screw_mount():
+    result = (
+        cq.Workplane("XY")
+        .circle(15)
+        .workplane(offset=5.0)
+        .circle(8)
+        .loft(combine=True)
+    )
+    
+    screw = cq.importers.importStep("./quarter_inch_screw.step").translate([0, 0, -10.5])
+    
+    return result.cut(screw)
+
+show(screw_mount())
 
