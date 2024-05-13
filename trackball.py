@@ -120,13 +120,13 @@ def sensor_mount_pmw3610():
     return result, bottom_hole.translate((0, 0, sm_offset_z))
 
 def btu(hole=True, extend=False):
-    slop = 0 if hole else 0.3
+    slop = 0.07  # 0 if hole else 0.3
     extension = 2 if extend else 0
     def btu_base():
-        return wp().cylinder(_btu_base_dpth + extension, (_btu_base_dia / 2) - slop)
+        return wp().cylinder(_btu_base_dpth + extension, (btu_base_dia / 2) - slop)
 
     def btu_head():
-        return wp().cylinder(_btu_head_dpth , (_btu_head_dia / 2) - slop)
+        return wp().cylinder(_btu_head_dpth, (btu_head_dia / 2) - slop)
 
     def btu_ball():
         return wp().sphere(btu_ball_dia / 2)
@@ -180,7 +180,7 @@ def new_btus(hole=True, extend=False):
         # b = btu()
         b = rotate_around_z(btu(hole=hole, extend=extend), 90)
 
-        hole = rotate_around_z(wp().cylinder(5, 0.65), 90).translate((0, 0, -0.5))
+        # hole = rotate_around_z(wp().cylinder(5, 0.65), 90).translate((0, 0, -0.5))
         # b = b.union(hole)
         # b = rotate_around_z(wp().sphere(1.52), 90)
         b = rotate_around_x(b, 90 - btu_ring_angle)
@@ -192,22 +192,22 @@ def new_btus(hole=True, extend=False):
 
     return rotate_around_x(result, bottom_rotate)
 
-def ceramic_bearings():
+def ceramic_bearings(size=3):
     result = None
 
     for i in range(3):
         a = i * PI3
-        b = wp().sphere(1.6)  
-        b = rotate_around_z(wp().cylinder(3, 1.6), 90)
+        # b = wp().sphere(1.75)  
+        b = rotate_around_z(wp().cylinder(size, 1.75), 90)
 
-        hole = rotate_around_z(wp().cylinder(5, 0.65), 90).translate((0, 0, -0.5))
+        hole = rotate_around_z(wp().cylinder(8, 0.65), 90).translate((0, 0, 0))
         b = b.union(hole)
         # b = rotate_around_z(wp().sphere(1.52), 90)
         b = rotate_around_x(b, 90 - btu_ring_angle)
         b = rotate_around_z(b, math.degrees(-a))
-        x = (btu_ring_r + 1) * math.sin(a)
-        y = (btu_ring_r + 1) * math.cos(a)
-        b = b.translate((x, y, btu_z_offset))
+        x = (btu_ring_r) * math.sin(a)
+        y = (btu_ring_r) * math.cos(a)
+        b = b.translate((x, y, (btu_z_offset + 0.5)))
         result = result.union(b) if result is not None else b
 
     return rotate_around_x(result, bottom_rotate)
@@ -504,7 +504,7 @@ def generate_btu_socket():
 def generate_ceramic_socket():
 
     socket = generate_base_socket()
-    # socket = socket.union(btu_mounts())
+    # socket = socket.uni[on(btu_mounts())
     socket = socket.cut(ceramic_bearings())
     # socket = socket.cut(access_holes())
     socket = rotate_around_z(socket, -90)
@@ -530,25 +530,25 @@ def generate_ceramic_mounts():
 
 # base = screw_base()
 # socket = generate_ceramic_socket()
-socket_btu = generate_btu_socket()
+# socket_btu = generate_btu_socket()
 ceramic_mounts = generate_ceramic_mounts()
 
 # cap = generate_screw_top()
 # mount, throwaway = sensor_mount_pmw3610()
 # interface = generate_interface_plate()
-cutter = generate_cutter()
+# cutter = generate_cutter()
 
 # show(socket_btu)
 
-show(cutter)
+show(ceramic_mounts)
 # show(cap.translate((0, 0, 15)))
 # show(interface.translate((0, 0, 8)))
 # show(cutter.translate([0, 0, 100]))
 
 # cq.exporters.export(socket, "./socket_ceramic_spheres.stl")
 # cq.exporters.export(socket, "./socket_ceramic_spheres.step")
-cq.exporters.export(socket_btu, "./socket_btu.stl")
-cq.exporters.export(socket_btu, "./socket_btu.step")
+# cq.exporters.export(socket_btu, "./socket_btu.stl")
+# cq.exporters.export(socket_btu, "./socket_btu.step")
 cq.exporters.export(ceramic_mounts, "./ceramic_mounts.stl")
 cq.exporters.export(ceramic_mounts, "./ceramic_mounts.step")
 # cq.exporters.export(cap, "./cap_for_socket.stl")
@@ -557,8 +557,8 @@ cq.exporters.export(ceramic_mounts, "./ceramic_mounts.step")
 # cq.exporters.export(mount, "./sensor_mount_pmw3610.step")
 # cq.exporters.export(interface, "./interface_plate.stl")
 # cq.exporters.export(interface, "./interface_plate.step")
-cq.exporters.export(cutter, "./cutter.stl")
-cq.exporters.export(cutter, "./cutter.step")
+# cq.exporters.export(cutter, "./cutter.stl")
+# cq.exporters.export(cutter, "./cutter.step")
 # cq.exporters.export(socket.union(interface), "./full_socket.stl")
 
 # cq.exporters.export(base, "./screw_base.amf", tolerance=0.01, angularTolerance=0.1)
