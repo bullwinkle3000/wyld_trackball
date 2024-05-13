@@ -198,16 +198,16 @@ def ceramic_bearings(size=3):
     for i in range(3):
         a = i * PI3
         # b = wp().sphere(1.75)  
-        b = rotate_around_z(wp().cylinder(size, 1.75), 90)
+        b = rotate_around_z(wp().cylinder(size, (size / 2) + 0.15), 90)
 
         hole = rotate_around_z(wp().cylinder(8, 0.65), 90).translate((0, 0, 0))
         b = b.union(hole)
         # b = rotate_around_z(wp().sphere(1.52), 90)
         b = rotate_around_x(b, 90 - btu_ring_angle)
         b = rotate_around_z(b, math.degrees(-a))
-        x = (btu_ring_r) * math.sin(a)
-        y = (btu_ring_r) * math.cos(a)
-        b = b.translate((x, y, (btu_z_offset + 0.5)))
+        x = (btu_ring_r + 0.5) * math.sin(a)
+        y = (btu_ring_r + 0.5) * math.cos(a)
+        b = b.translate((x, y, (btu_z_offset + 0.2)))
         result = result.union(b) if result is not None else b
 
     return rotate_around_x(result, bottom_rotate)
@@ -524,14 +524,14 @@ def generate_bearing_socket():
     return socket
 
 
-def generate_ceramic_mounts():
-    btus = new_btus(hole=False).cut(ceramic_bearings())
+def generate_ceramic_mounts(size=3):
+    btus = new_btus(hole=False).cut(ceramic_bearings(size=size))
     return btus
 
 # base = screw_base()
 # socket = generate_ceramic_socket()
 # socket_btu = generate_btu_socket()
-ceramic_mounts = generate_ceramic_mounts()
+ceramic_mounts = generate_ceramic_mounts(size=4)
 
 # cap = generate_screw_top()
 # mount, throwaway = sensor_mount_pmw3610()
