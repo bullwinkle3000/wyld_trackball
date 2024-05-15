@@ -199,7 +199,7 @@ def ceramic_bearings(size=3):
         a = i * PI3
         # b = wp().sphere(1.75)  
         b = rotate_around_z(wp().cylinder(size, (size / 2) + 0.15), 90)
-        offset_r = 0.1 if size == 3 else 0.5
+        offset_r = 0.1 if size == 3 else 0.7
         offset_z = 0.5 if size == 3 else 0.2
         hole = rotate_around_z(wp().cylinder(8, 0.65), 90).translate((0, 0, 0))
         b = b.union(hole)
@@ -532,8 +532,8 @@ def generate_ceramic_mounts(size=3):
 # base = screw_base()
 # socket = generate_ceramic_socket()
 # socket_btu = generate_btu_socket()
-ceramic_mounts3 = generate_ceramic_mounts(size=3)
-# ceramic_mounts4 =  generate_ceramic_mounts(size=4)
+# ceramic_mounts3 = generate_ceramic_mounts(size=3)
+ceramic_mounts4 =  generate_ceramic_mounts(size=4)
 # cap = generate_screw_top()
 # mount, throwaway = sensor_mount_pmw3610()
 # interface = generate_interface_plate()
@@ -541,7 +541,7 @@ ceramic_mounts3 = generate_ceramic_mounts(size=3)
 
 # show(socket_btu)
 
-show(ceramic_mounts3)
+show(ceramic_mounts4)
 # show(cap.translate((0, 0, 15)))
 # show(interface.translate((0, 0, 8)))
 # show(cutter.translate([0, 0, 100]))
@@ -550,8 +550,8 @@ show(ceramic_mounts3)
 # cq.exporters.export(socket, "./socket_ceramic_spheres.step")
 # cq.exporters.export(socket_btu, "./socket_btu.stl")
 # cq.exporters.export(socket_btu, "./socket_btu.step")
-cq.exporters.export(ceramic_mounts3, "./ceramic_mounts3.stl")
-cq.exporters.export(ceramic_mounts3, "./ceramic_mounts3.step")
+cq.exporters.export(ceramic_mounts4, "./ceramic_mounts4.stl")
+cq.exporters.export(ceramic_mounts4, "./ceramic_mounts4.step")
 # cq.exporters.export(cap, "./cap_for_socket.stl")
 # cq.exporters.export(cap, "./cap_for_socket.step")
 # cq.exporters.export(mount, "./sensor_mount_pmw3610.stl")
