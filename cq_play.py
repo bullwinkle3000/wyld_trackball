@@ -466,5 +466,28 @@ def screw_mount():
     
     return result.cut(screw)
 
-show(screw_mount())
 
+def usb_c_mount():
+    min_vert = 14.55
+    max_vert = 16.2
+    width = 5.5
+    depth = 4.3
+    wall_depth = 4
+    
+    walls = wp().box(width + wall_depth, 6 + wall_depth, max_vert + wall_depth)
+    
+    slot = wp().box(width, 6 + wall_depth, max_vert).translate((0, -depth + 1, 0))
+    
+    walls = walls.cut(slot)
+    
+    wedge = wp(orient="YZ").lineTo(0, ((max_vert - 0.2) / 2)).lineTo(depth, min_vert / 2).lineTo(depth, -min_vert / 2).lineTo(0, -(max_vert - 0.2) / 2).close().extrude(width)
+    # wedge = wedge.translate((-(width / 2), -depth / 2, -depth / 2))
+    wedge = wedge.translate((-(width / 2), 1, 0))
+    walls = walls.cut(wedge)
+    return walls
+
+mount = usb_c_mount()
+show(mount)
+
+cq.exporters.export(mount, "./usb_c_mount.stl")
+cq.exporters.export(mount, "./usb_c_mount.step")

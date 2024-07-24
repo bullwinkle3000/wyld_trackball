@@ -43,7 +43,7 @@ sm_screw_mgn = 1.1
 sm_screw_dpth = 15
 sm_screw_cap_dia = sm_screw_mgn + sm_screw_dia_btm
 
-sm_base_h = 25     #  42 #  21
+sm_base_h = 21     #  42 #  21
 sm_base_l = 28.25  #  42 #  28.25
 sm_skt_dia = 9
 sm_base_d = 1.5
@@ -289,7 +289,7 @@ def fins(with_cut=False):
     return result
 
 
-slot_inner_radius = socket_radius - 1.5
+slot_inner_radius = socket_radius - 1.5  # padded_ball_radius
 slot_outer_radius = slot_inner_radius + 2
 slot_angle = 30
 slot_angle_offset = -15
@@ -314,7 +314,7 @@ def flanges():
     ]
     shape = None
     for angle in flange_pos:
-        flange = arc(angle + slot_angle_offset, 27, slot_inner_radius + 0.2, slot_outer_radius, height=1.4)
+        flange = arc(angle + slot_angle_offset, 27, slot_inner_radius + 0.2, slot_outer_radius, height=1.5)
         flange = flange.edges(">Z").chamfer(0.2)
         shape = shape.union(flange) if shape is not None else flange
 
@@ -412,18 +412,19 @@ def generate_interface_plate():
     return rotate_around_z(wp().cylinder(3, socket_radius + 4).cut(plate_cut).cut(nubs(1.35, socket_radius + 1.2).translate((0, 0, -1))), -90)
 
 def generate_screw_top():
-    top_cyl = wp().cylinder(6.5, socket_radius + 2).edges(">Z").chamfer(3)
+    top_cyl = wp().cylinder(6.5, socket_radius + 1.5).edges(">Z").chamfer(3)
 
-    ball_lock_wall_cut = wp().cylinder(3.05, padded_ball_radius - 1.25).translate((0, 0, 2.25))
+    ball_lock_wall_cut = wp().cylinder(3.05, padded_ball_radius - 1.75).translate((0, 0, 2.25))
 
     # inner_wall_cut = wp().cylinder(2.05, padded_ball_radius).translate((0, 0, -1))
 
     outer_lid_cut = wp().cylinder(4.05, socket_radius + 0.3).translate((0, 0, -1.25))
 
     top_cyl = top_cyl.cut(ball_lock_wall_cut).cut(outer_lid_cut).translate((0, 0, 1.4)).edges(">Z").fillet(0.6)
-
-    top_cyl = top_cyl.union(flanges().translate((0, 0, -1.87)))
-    return top_cyl
+    top_cyl = top_cyl.union(flanges().translate((0, 0, -1.85)))
+    
+    ball = wp().sphere(padded_ball_radius + 1.5).translate((0, 0, -6))
+    return top_cyl.cut(ball)
 
 
 def nubs(scale, distance):
@@ -438,7 +439,7 @@ def nubs(scale, distance):
 
 
 def generate_cutter():
-    return wp().sphere(socket_radius).union(new_btus(extend=True))
+    return rotate_around_z(wp().sphere(socket_radius).union(new_btus(extend=True)), -90)
     # cutter = wp().cylinder(20, socket_radius).union(wp().sphere(socket_radius).translate([0, 0, 10])).union(wp().sphere(socket_radius).translate([0, 0, -10]))
     # return cutter
     
@@ -474,6 +475,7 @@ def generate_base_socket():
 
     socket = wp().sphere(socket_radius)  # .cut(bottom_cutter)
     sensor, bottom_hole = sensor_mount_pmw3360()
+    # sensor, bottom_hole = sensor_mount_pmw3610()
     socket = socket.cut(bottom_cutter.union(ball))
     sensor = sensor.cut(ball)
     sensor = sensor.translate((0, 0, 0.1))
@@ -488,7 +490,7 @@ def generate_base_socket():
     # socket = socket.cut(ball)
     # socket = socket.union(nubs(1, -(socket_radius)).translate((0,0, -2)))
     # socket = socket.cut(slots())
-    socket = socket.cut(access_holes())
+    # socket = socket.cut(access_holes())
     return socket
 
 
@@ -531,29 +533,29 @@ def generate_ceramic_mounts(size=3):
 
 # base = screw_base()
 # socket = generate_ceramic_socket()
-# socket_btu = generate_btu_socket()
+socket_btu = generate_btu_socket()
 # ceramic_mounts3 = generate_ceramic_mounts(size=3)
-ceramic_mounts4 =  generate_ceramic_mounts(size=4)
-# cap = generate_screw_top()
+# ceramic_mounts4 =  generate_ceramic_mounts(size=4)
+cap = generate_screw_top()
 # mount, throwaway = sensor_mount_pmw3610()
 # interface = generate_interface_plate()
 # cutter = generate_cutter()
 
 # show(socket_btu)
 
-show(ceramic_mounts4)
+show(cap)
 # show(cap.translate((0, 0, 15)))
 # show(interface.translate((0, 0, 8)))
 # show(cutter.translate([0, 0, 100]))
 
 # cq.exporters.export(socket, "./socket_ceramic_spheres.stl")
 # cq.exporters.export(socket, "./socket_ceramic_spheres.step")
-# cq.exporters.export(socket_btu, "./socket_btu.stl")
-# cq.exporters.export(socket_btu, "./socket_btu.step")
-cq.exporters.export(ceramic_mounts4, "./ceramic_mounts4.stl")
-cq.exporters.export(ceramic_mounts4, "./ceramic_mounts4.step")
-# cq.exporters.export(cap, "./cap_for_socket.stl")
-# cq.exporters.export(cap, "./cap_for_socket.step")
+cq.exporters.export(socket_btu, "./socket_btu.stl")
+cq.exporters.export(socket_btu, "./socket_btu.step")
+# cq.exporters.export(ceramic_mounts4, "./ceramic_mounts4.stl")
+# cq.exporters.export(ceramic_mounts4, "./ceramic_mounts4.step")
+cq.exporters.export(cap, "./cap_for_socket_trim.stl")
+cq.exporters.export(cap, "./cap_for_socket_trim.step")
 # cq.exporters.export(mount, "./sensor_mount_pmw3610.stl")
 # cq.exporters.export(mount, "./sensor_mount_pmw3610.step")
 # cq.exporters.export(interface, "./interface_plate.stl")

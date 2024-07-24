@@ -1,5 +1,10 @@
+# from jupyter_cadquery.viewer.client import show_object
+from build123d import *
+import cadquery as cq
 from cq_shortcuts import *
+from ocp_vscode import show, show_object, reset_show, set_port, set_defaults, get_defaults
 from dataclasses import dataclass, field
+set_port(3939)
 
 
 @dataclass
@@ -477,5 +482,63 @@ def usb_holder():
     print("Done")
     return shape
 
+def build_holder(pcb):
+    pcb_box = wp().box(pcb["w"], pcb["l"], pcb["h"])
 
-# show_object(wall)
+    left_x = -pcb["w"] / 2
+    back_y = pcb["l"] / 2
+    h_off = pcb["offsets"]["h"]
+
+    for data in pcb["port_cuts"]:
+        off = data["offset"]
+        port = wp().box(data["w"], data["l"], data["h"]).translate(
+            [left_x + off[0] + data["w"] / 2, back_y, off[2] + data["h"] / 2 + pcb["h"] / 2])
+        port = port.edges("|Y").fillet(1)
+        pcb_box = pcb_box.union(port)
+
+    base = wp().box(pcb["w"] + 3.5, pcb["l"] + 3.5, 1).translate([0, 0, -1])
+    base = base.edges("|Z and >Y").chamfer(2.5)
+    base = base.cut(wp().box(pcb["w"] + 0.5, pcb["l"] + 0.5, 2).translate([0, 0, 1]))
+    pin_row1 = wp().box(3, 49, 3).translate([left_x + 15.25 + 9 + 5.5, -1, 0])
+    pin_row2 = wp().box(3, 49, 3).translate([left_x + 15.25 - 9 + 5.5, -1, 0])
+
+    # base = base.cut(pin_row2).cut(pin_row1)
+
+    base = base.translate([0, 0, -7.5])
+    holder_hole_width = 29.2
+    holder_hole_height = 16.5
+    # front wall
+
+    wall = wp().box(holder_hole_width + 8, 9, holder_hole_height + 1).translate([0, back_y + 4, -0.25])
+    wall = wall.edges(">Z and |Y").fillet(3)
+    groove_neg = wp().box(holder_hole_width + 10, 7, holder_hole_height + 11).translate([0, back_y + 3, 2.25])
+    groove_neg = groove_neg.cut(
+        wp().box(holder_hole_width, 30, holder_hole_height + 1).translate([0, back_y + 3, -2.3]))
+    inset = wp().box(holder_hole_width - 2, 10, holder_hole_height + 1).translate([0, back_y + 7, -2.75])
+    inset = inset.edges(">Z and |Y").fillet(2)
+    wall = wall.cut(inset)
+    wall = wall.cut(groove_neg)
+    pcb_box = pcb_box.translate([0, 0, -2])
+    posts1 = wp().box(3, pcb["l"], 5.5).translate([-pcb["w"] / 2 + 1, 0, -5.8])
+    posts2 = wp().box(3, pcb["l"], 5.5).translate([pcb["w"] / 2 - 1, 0, -5.8])
+    rear_guard = wp().box(pcb["w"], 3.0, 7.5).translate([0, -pcb["l"] / 2 - 1, -4.8])
+    wall = wall.cut(pcb_box)
+    base = base.union(posts1).union(posts2).union(rear_guard)
+    wall = wall.union(base)
+    
+    insert_cap_1 = wp().cylinder(5.5, 2.5).translate(((pcb["w"] / 2) - 5, -(pcb["l"] / 2) + 4, -5.8))
+    insert_cap_2 = wp().cylinder(5.5, 2.5).translate(((pcb["w"] / 2) - 5, (pcb["l"] / 2) -2, -5.8))
+    
+    wall = wall.union(insert_cap_1).union(insert_cap_2)
+    
+    screw1 = wp().cylinder(20, 1).translate(((pcb["w"] / 2) - 5, -(pcb["l"] / 2) + 4, 0))
+    screw2 = wp().cylinder(20, 1).translate(((pcb["w"] / 2) - 5, (pcb["l"] / 2) -2, 0))
+
+    wall = wall.cut(screw1).cut(screw2)
+    
+    return wall
+
+def get_holder():
+    return build_holder(pcb_v2)
+
+show(get_holder())
