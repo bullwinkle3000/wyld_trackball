@@ -1,8 +1,8 @@
 from cq_shortcuts import *
 from math import sin, cos, pi
-from ocp_vscode import show, show_object, reset_show, set_port, set_defaults, get_defaults
+# from ocp_vscode import show, show_object, reset_show, set_port, set_defaults, get_defaults
 
-set_port(3939)
+# set_port(3939)
 
 SEGMENTS = 48
 
@@ -321,26 +321,66 @@ def insert_cutter(radii=(2.35, 2.0), heights=(2.8, 1.5), scale_by=1):
 #
 # test = test.cut(insert_cutter().translate((0, 0, 3 - 2)))
 
+def ball_join():
+    sphere = cq.Workplane().sphere(5)
+    base = (cq.Workplane(origin=(0,0,-2))
+        .box(12,12,10)
+        .cut(sphere)
+        .edges("|Z")
+        .fillet(2)
+    )
+    sphere_face = base.faces(">>X[2] and (not |Z) and (not |Y)").val()
+    base = (base
+        .faces("<Z")
+        .workplane()
+        .circle(2)
+        .extrude(10)
+    )
+
+    shaft = (cq.Workplane()
+        .sphere(4.5)
+        .circle(1.5)
+        .extrude(20)
+    )
+
+    spherical_joint = (base.union(shaft)
+        .faces(">X")
+        .workplane(centerOption="CenterOfMass")
+        .move(0,4)
+        .slot2D(10,2,90)
+        .cutBlind(sphere_face)
+        .workplane(offset=10)
+        .move(0,2)
+        .circle(0.9)
+        .extrude("next")
+    )
+
+    return spherical_joint
+
+
 def hand_chair():
-    top_len = 120
+    top_len = 90
     top_width = 60
     tl2 = top_len / 2
     tw2 = top_width / 2
     top_height = 10
 
-    side_guard_top = 50
-    side_guard_width = 20
-    side_guard_height = 10
+    side_guard_width = top_width * 1.8
+    side_guard_length = 50
+    side_guard_height = top_height * 2
+    
+    socket_radius = 12
+    socket_tolerance = 0.1
 
-    height = 42
+    height = 45
 
     def make_top_base():
         pts = [
             (-tw2, tl2),  # top left
             (tw2, tl2),  # top right
-            (tw2, 0),  # mid right
-            (tw2 + side_guard_width, 0),  # top right guard corner
-            (tw2 + side_guard_width, -tl2),  # bottom right
+            # (tw2, 0),  # mid right
+            # (tw2 + side_guard_width, 0),  # top right guard corner
+            # (tw2 + side_guard_width, -tl2),  # bottom right
             (-tw2, -tl2),  # bottom left
             (-tw2, tl2)  # top left
         ]
@@ -355,11 +395,14 @@ def hand_chair():
         # top.faces("<Y").tag("bottom")
         # pad = wp().sphere(30)
         cut_rad = 18  # (top_height + side_guard_height) / 2
-        top = outline.extrude(top_height)
-        top = top.faces(">Y").edges("|Z").fillet(24)
-        top = top.faces().edges("<X and <Y").fillet(40)
+        # top = outline.extrude(top_height)
+
+        top = wp().box(top_width, top_len, top_height).translate((0, 0, top_height / 2))
+        top = top.faces().edges("|Z").fillet(24)
+        # top = top.faces().edges("<X and <Y").fillet(40)
         top = top.faces(">Z").edges().fillet(5)
-        guard = wp().box(side_guard_width, side_guard_top, top_height + side_guard_height)
+        top = top.faces("<Z").edges().fillet(3)
+
         ball = wp().sphere(cut_rad).translate((0, -tl2, 0))
         rod = wp().cylinder(top_len, cut_rad).rotate((-1, 0, 0), (1, 0, 0), 90)
         rod = rod.translate((-10, 43, 15))
@@ -367,9 +410,16 @@ def hand_chair():
         # rod = rod.union(ball.translate((0, -tl2, 0))).translate((0, tl2 + side_guard_height / 2, side_guard_height / 2))
         # guard = guard.cut(rod)
         # guard = guard.cut(ball)
-        guard = guard.translate((tw2 + (side_guard_width / 2), -(side_guard_top / 2), 10))
-        guard = guard.faces(">Z").edges("<X").fillet(5)
-        guard = guard.faces(">Z").edges(">Y").fillet(10)
+        guard = wp().box(side_guard_width, side_guard_length, side_guard_height)
+        guard = guard.faces().edges("|Z").fillet(24)
+        guard = guard.faces("<Z").edges().fillet(10)
+        guard_cutter = box(side_guard_width - 4, side_guard_length * 2, side_guard_height).translate((0, (-side_guard_length / 2) + 53, side_guard_height / 2))
+        guard_cutter = guard_cutter.faces().edges("|Z").fillet(24)
+        guard_cutter = guard_cutter.faces("<Z").edges().fillet(10)
+        guard = guard.cut(guard_cutter)
+        guard = guard.translate((0, -top_len / 2 - 5, side_guard_height / 2))
+        # guard = guard.faces(">Z").edges("<X").fillet(5)
+        # guard = guard.faces(">Z").edges(">Y").fillet(10)
         palm_cup = wp().cylinder(2 * (tl2 / 3), 30).rotate((-1, 0, 0), (1, 0, 0), 90).translate((0, 0, 0))
         sp1 = wp().sphere(30).translate((0, tl2 / 3, 0))
         sp2 = wp().sphere(30).translate((0, -tl2 / 3, 0))
@@ -377,21 +427,42 @@ def hand_chair():
         palm_cup = palm_cup.union(sp1).union(sp2)
         cut_box = wp().box(100, 150, 60).translate((0, 0, -5))
         palm_cup = palm_cup.cut(cut_box).translate((0, 0, -15))
+        
+        ball = wp().sphere(15).translate((5, -20, 0))
         # return top.union(guard).union(palm_cup)
-        top = top.union(guard).union(palm_cup)
-        top = top.faces().edges(">X and <Y").fillet(8)
+        top = top.union(palm_cup).union(guard)
+        # top = top.faces().edges(">X and <Y").fillet(8)
         # top = top.faces().edges(">Z").fillet(0.5)
-        top = top.faces().edges("<Z").fillet(2)
-        top = top.rotate((-1, 0, 0), (1, 0, 0), 10)
-        top = top.rotate((0, -1, 0), (0, 1, 0), 10).translate((0, 0, height - 2))
+        socket_y_offset = -30
+        socket_offset = 0
+        socket_outer = wp().sphere(socket_radius + 2 + socket_tolerance).translate((0, socket_y_offset, socket_offset + 3))
+        # cutter2 = wp().box(socket_radius * 3, socket_radius * 3, 5).translate((0, 0, socket_radius + 3 + socket_tolerance))
+        # socket_outer = socket_outer.cut(cutter2)
+        socket_inner = wp().sphere(socket_radius + socket_tolerance).translate((0, socket_y_offset, socket_offset))
+        cutter = wp().box(socket_radius * 3, socket_radius * 3, 20)
+        flange_height = 7
+        cutter = cutter.union(wp().box(socket_radius * 3, 4, 20).translate((0, 0, flange_height)))
+        # cutter = cutter.union(wp().box(4, socket_radius * 3, 20).rotate((0, 0, -1), (0, 0, 1), -45).translate((0, 0, flange_height)))
+        cutter = cutter.union(wp().box(4, socket_radius * 3, 20).translate((0, 0, flange_height)))
+        cutter = cutter.translate((0, socket_y_offset, socket_offset - 14))
+        
+        # top = top.rotate((0, 1, 0), (0, -1, 0), -15)
+        top = top.translate((0, 0, 3))
+        top = top.union(socket_outer).cut(socket_inner).cut(cutter)
+        
+        # test_socket = socket_outer.cut(socket_inner).cut(cutter)
+        # test_box_bottom = wp().box(20, 20, 4).translate((5, -15, socket_radius + 3.5))
+        # test_socket = test_socket.union(test_box_bottom).rotate((-1, 0, 0), (1, 0, 0), 180)
+        # top = top.faces("<Z").edges().fillet(0.5)
+        # top = top.rotate((-1, 0, 0), (1, 0, 0), 10)
+        top = top.translate((0, 0, height))
         return top.translate((-5, 0, 0))
-
 
 
     def make_bottom_holder():
         front_width = top_width / 2
         base_width = top_width
-        base_len = top_len
+        base_len = top_len - 10
         bl2 = base_len / 2
         bw2 = base_width / 2
         fw2 = (base_width - front_width) / 2
@@ -412,12 +483,18 @@ def hand_chair():
 
         base = base.faces().edges("<Z").chamfer(1)
         base = base.faces().edges(">Z").chamfer(1)
+        base = base.translate((0, -10, 0))
 
-        trunk = wp().box(15, 30, height).translate((0, -15, height / 2))
-        trunk = trunk.faces().edges("|Z").fillet(5)
-        return base.union(trunk)
+        # trunk = wp().box(15, 30, height).translate((0, -15, height / 2))
+        # trunk = trunk.faces().edges("|Z").fillet(5)
+        trunk = wp().cylinder(height, 7).translate((0, -15, height / 2))
+        
+        ball = wp().sphere(12).translate((0, -15, height))
+        # return top.union(guard).union(palm_cup)
+        # top = trunk.union(ball)
+        return base.union(trunk).union(ball)
 
-    return make_top_base().union(make_bottom_holder())
+    return make_top_base(), make_bottom_holder()
 
 
 def puck_holder():
@@ -486,8 +563,12 @@ def usb_c_mount():
     walls = walls.cut(wedge)
     return walls
 
-mount = usb_c_mount()
-show(mount)
 
-cq.exporters.export(mount, "./usb_c_mount.stl")
-cq.exporters.export(mount, "./usb_c_mount.step")
+chair_top, chair_mount = hand_chair()
+
+# show(chair_top.translate((0, 0, 15)).union(chair_mount))
+# show(chair_mount)
+
+# cq.exporters.export(chair_top, "./hand_chair_top.stl")
+cq.exporters.export(chair_mount, "./hand_chair_mount.stl")
+cq.exporters.export(chair_top, "./hand_chair_top.stl")
