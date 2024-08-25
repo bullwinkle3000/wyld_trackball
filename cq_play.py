@@ -365,14 +365,14 @@ def hand_chair():
     tw2 = top_width / 2
     top_height = 10
 
-    side_guard_width = top_width * 1.8
+    side_guard_width = top_width * 2
     side_guard_length = 50
-    side_guard_height = top_height * 2
+    side_guard_height = top_height * 3
     
     socket_radius = 12
-    socket_tolerance = 0.1
+    socket_tolerance = 0.05
 
-    height = 45
+    height = 42
 
     def make_top_base():
         pts = [
@@ -410,54 +410,65 @@ def hand_chair():
         # rod = rod.union(ball.translate((0, -tl2, 0))).translate((0, tl2 + side_guard_height / 2, side_guard_height / 2))
         # guard = guard.cut(rod)
         # guard = guard.cut(ball)
-        guard = wp().box(side_guard_width, side_guard_length, side_guard_height)
-        guard = guard.faces().edges("|Z").fillet(24)
+        # guard = wp().box(side_guard_width, side_guard_length, side_guard_height)
+        guard = wp().cylinder(side_guard_height, side_guard_width / 2)
+        # guard = guard.cut(wp().box(300, 50, 100).translate((0, (-side_guard_width / 2 - 10), 0)))
+        # guard = guard.faces().edges(">Z").fillet(24)
         guard = guard.faces("<Z").edges().fillet(10)
-        guard_cutter = box(side_guard_width - 4, side_guard_length * 2, side_guard_height).translate((0, (-side_guard_length / 2) + 53, side_guard_height / 2))
-        guard_cutter = guard_cutter.faces().edges("|Z").fillet(24)
+        # guard_cutter = box(side_guard_width - 4, side_guard_length * 2, side_guard_height).translate((0, (-side_guard_length / 2) + 53, side_guard_height / 2))
+        guard_cutter = wp().cylinder(side_guard_height, (side_guard_width / 2) - 4).translate(
+            (0, 0, side_guard_height / 3))
+        # guard_cutter = guard_cutter.faces().edges("|Z").fillet(24)
         guard_cutter = guard_cutter.faces("<Z").edges().fillet(10)
         guard = guard.cut(guard_cutter)
-        guard = guard.translate((0, -top_len / 2 - 5, side_guard_height / 2))
-        # guard = guard.faces(">Z").edges("<X").fillet(5)
+        guard = guard.faces(">Z").edges().fillet(1.5)
+        guard = guard.cut(wp().box(100, 200, 100).translate((50, 100, 0)))
+        guard = guard.cut(wp().box(100, 200, 100).translate((-50, 80, 0)))
+        # guard = guard.rotate((0, 0, 1), (0, 0, -1), -10)
+        guard = guard.cut(wp().box(300, 50, 100).translate((0, (-side_guard_width / 2) - 5, 0)))
+        guard = guard.translate((0, -top_len / 2 + 35, side_guard_height / 2))
+        # guard = guard.faces(">Y").edges().fillet(1.5)
         # guard = guard.faces(">Z").edges(">Y").fillet(10)
         palm_cup = wp().cylinder(2 * (tl2 / 3), 30).rotate((-1, 0, 0), (1, 0, 0), 90).translate((0, 0, 0))
         sp1 = wp().sphere(30).translate((0, tl2 / 3, 0))
         sp2 = wp().sphere(30).translate((0, -tl2 / 3, 0))
 
+        socket_y_offset = -35
+
         palm_cup = palm_cup.union(sp1).union(sp2)
         cut_box = wp().box(100, 150, 60).translate((0, 0, -5))
-        palm_cup = palm_cup.cut(cut_box).translate((0, 0, -15))
+        palm_cup = palm_cup.cut(cut_box).translate((0, socket_y_offset / 2, -15))
         
-        ball = wp().sphere(15).translate((5, -20, 0))
+        # ball = wp().sphere(15).translate((5, -20, 0))
         # return top.union(guard).union(palm_cup)
         top = top.union(palm_cup).union(guard)
         # top = top.faces().edges(">X and <Y").fillet(8)
         # top = top.faces().edges(">Z").fillet(0.5)
-        socket_y_offset = -30
+
         socket_offset = 0
-        socket_outer = wp().sphere(socket_radius + 2 + socket_tolerance).translate((0, socket_y_offset, socket_offset + 3))
+        socket_outer = wp().sphere(socket_radius + 1.5 + socket_tolerance).translate((0, socket_y_offset, socket_offset + 3))
         # cutter2 = wp().box(socket_radius * 3, socket_radius * 3, 5).translate((0, 0, socket_radius + 3 + socket_tolerance))
         # socket_outer = socket_outer.cut(cutter2)
         socket_inner = wp().sphere(socket_radius + socket_tolerance).translate((0, socket_y_offset, socket_offset))
         cutter = wp().box(socket_radius * 3, socket_radius * 3, 20)
         flange_height = 7
-        cutter = cutter.union(wp().box(socket_radius * 3, 4, 20).translate((0, 0, flange_height)))
+        cutter = cutter.union(wp().box(6, socket_radius * 3, 22).translate((0, 0, flange_height)))
+        cutter = cutter.union(wp().box(socket_radius * 3, 6, 22).translate((0, 0, flange_height)))
         # cutter = cutter.union(wp().box(4, socket_radius * 3, 20).rotate((0, 0, -1), (0, 0, 1), -45).translate((0, 0, flange_height)))
-        cutter = cutter.union(wp().box(4, socket_radius * 3, 20).translate((0, 0, flange_height)))
-        cutter = cutter.translate((0, socket_y_offset, socket_offset - 14))
+        # cutter = cutter.union(wp().box(4, socket_radius * 3, 20).translate((0, 0, flange_height)))
+        cutter = cutter.translate((0, socket_y_offset, socket_offset - 15))
         
         # top = top.rotate((0, 1, 0), (0, -1, 0), -15)
         top = top.translate((0, 0, 3))
         top = top.union(socket_outer).cut(socket_inner).cut(cutter)
         
         # test_socket = socket_outer.cut(socket_inner).cut(cutter)
-        # test_box_bottom = wp().box(20, 20, 4).translate((5, -15, socket_radius + 3.5))
+        # test_box_bottom = wp().box(20, 20, 4).translate((0, -35, socket_radius + 3.5))
         # test_socket = test_socket.union(test_box_bottom).rotate((-1, 0, 0), (1, 0, 0), 180)
         # top = top.faces("<Z").edges().fillet(0.5)
         # top = top.rotate((-1, 0, 0), (1, 0, 0), 10)
         top = top.translate((0, 0, height))
         return top.translate((-5, 0, 0))
-
 
     def make_bottom_holder():
         front_width = top_width / 2
@@ -475,24 +486,28 @@ def hand_chair():
             (-fw2, bl2)  # top left
         ]
 
-        outline = wp().polyline(pts).close()
-
+        # outline = wp().polyline(pts).close()
+        outline = wp().circle(30)
         base = outline.extrude(3)
 
-        base = base.faces().edges("|Z").fillet(10)
+        # base = base.faces().edges("|Z").fillet(10)
 
         base = base.faces().edges("<Z").chamfer(1)
         base = base.faces().edges(">Z").chamfer(1)
-        base = base.translate((0, -10, 0))
+        base = base.translate((0, 0, 0))
 
         # trunk = wp().box(15, 30, height).translate((0, -15, height / 2))
         # trunk = trunk.faces().edges("|Z").fillet(5)
-        trunk = wp().cylinder(height, 7).translate((0, -15, height / 2))
+        trunk = wp().cylinder(height, 7).translate((0, 0, height / 2))
         
-        ball = wp().sphere(12).translate((0, -15, height))
+        ball_join = (wp().sphere(socket_radius)
+                .union(wp().cylinder(30, 2.5).rotate((1, 0, 0), (-1, 0, 0), 90).translate((0, 0, -2)))
+                .union(wp().cylinder(30, 2.5).rotate((0, 1, 0), (0, -1, 0), 90).translate((0, 0, -2))))
+
+        ball_join = ball_join.translate((0, 0, height))
         # return top.union(guard).union(palm_cup)
         # top = trunk.union(ball)
-        return base.union(trunk).union(ball)
+        return base.union(trunk).union(ball_join)
 
     return make_top_base(), make_bottom_holder()
 
