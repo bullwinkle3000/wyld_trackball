@@ -1,11 +1,13 @@
 from cq_shortcuts import *
 from math import sin, cos, pi
+from build123d import *
+from bd_warehouse.thread import IsoThread
+# from ocp_vscode import *
 # from ocp_vscode import show, show_object, reset_show, set_port, set_defaults, get_defaults
 
 # set_port(3939)
 
 SEGMENTS = 48
-
 
 width = 14
 height = 14
@@ -28,6 +30,20 @@ else:
     height = 9.6
 
 
+def threaded_cylinder():
+    thread = IsoThread(major_diameter=8, pitch=1.25, length=20, end_finishes=("fade", "raw"))
+
+    with BuildPart() as rod_end:
+        Cylinder(
+            thread.min_radius,
+            30,
+            rotation=(90, 0, 0),
+            align=(Align.CENTER, Align.CENTER, Align.MIN)
+        )
+
+    return rod_end
+
+
 def block_bumps(wires):
     t = (pitch - (2 * clearance) - bumpDiam) / 2.0
     postDiam = 6.5  # pitch - t  # works out to 6.5
@@ -39,12 +55,12 @@ def block_bumps(wires):
 
     # shell inwards not outwards
 
-
     # make the bumps on the top
     s = wp().rarray(pitch, pitch, lbumps, wbumps, True).circle(bumpDiam / 2.0)
 
     # s = s.intersect(wires)
     return s
+
 
 def flat_bottom_block():
     #####
@@ -83,7 +99,6 @@ def flat_bottom_block():
          rarray(pitch, pitch, lbumps, wbumps, True).circle(bumpDiam / 2.0)
          .extrude(bumpHeight))
 
-
     # add posts on the bottom. posts are different diameter depending on geometry
     # solid studs for 1 bump, tubes for multiple, none for 1x1
     # tmp = s.faces("<Z").workplane(invert=True)
@@ -101,6 +116,7 @@ def flat_bottom_block():
     #     tmp = s
 
     return s
+
 
 def blockerize(shape):
     #####
@@ -155,7 +171,6 @@ def blockerize(shape):
         tmp = s
 
     return shape.union(tmp)
-
 
 
 def plate_play():
@@ -229,7 +244,6 @@ def extrude_example():
     return s
 
 
-
 def insert_46_long_play():
     top_radius = 5.68 / 2
     top_height = 0.55
@@ -262,6 +276,7 @@ def insert_46_long_play():
     insert = top.union(medium).union(medium2).union(bottom)
     test = test.cut(insert.translate((0, 0, 4.5 - (total_height / 2))))
     return test
+
 
 def insert_4_short_play():
     top_radius = 4.7 / 2
@@ -315,6 +330,7 @@ def insert_cutter(radii=(2.35, 2.0), heights=(2.8, 1.5), scale_by=1):
 
     return cyl
 
+
 # result = wp('XY').box(10, 10, 1).faces(">Z").rect(3, 3).workplane(offset=5).circle(3).loft().faces(">Z").edges().fillet(0.4)
 # inner = plate_play()
 # test = wp().cylinder(6, 4)
@@ -323,37 +339,37 @@ def insert_cutter(radii=(2.35, 2.0), heights=(2.8, 1.5), scale_by=1):
 
 def ball_join():
     sphere = cq.Workplane().sphere(5)
-    base = (cq.Workplane(origin=(0,0,-2))
-        .box(12,12,10)
-        .cut(sphere)
-        .edges("|Z")
-        .fillet(2)
-    )
+    base = (cq.Workplane(origin=(0, 0, -2))
+            .box(12, 12, 10)
+            .cut(sphere)
+            .edges("|Z")
+            .fillet(2)
+            )
     sphere_face = base.faces(">>X[2] and (not |Z) and (not |Y)").val()
     base = (base
-        .faces("<Z")
-        .workplane()
-        .circle(2)
-        .extrude(10)
-    )
+            .faces("<Z")
+            .workplane()
+            .circle(2)
+            .extrude(10)
+            )
 
     shaft = (cq.Workplane()
-        .sphere(4.5)
-        .circle(1.5)
-        .extrude(20)
-    )
+             .sphere(4.5)
+             .circle(1.5)
+             .extrude(20)
+             )
 
     spherical_joint = (base.union(shaft)
-        .faces(">X")
-        .workplane(centerOption="CenterOfMass")
-        .move(0,4)
-        .slot2D(10,2,90)
-        .cutBlind(sphere_face)
-        .workplane(offset=10)
-        .move(0,2)
-        .circle(0.9)
-        .extrude("next")
-    )
+                       .faces(">X")
+                       .workplane(centerOption="CenterOfMass")
+                       .move(0, 4)
+                       .slot2D(10, 2, 90)
+                       .cutBlind(sphere_face)
+                       .workplane(offset=10)
+                       .move(0, 2)
+                       .circle(0.9)
+                       .extrude("next")
+                       )
 
     return spherical_joint
 
@@ -367,12 +383,45 @@ def hand_chair():
 
     side_guard_width = top_width * 2
     side_guard_length = 50
-    side_guard_height = top_height * 3
-    
+    side_guard_height = top_height
+
     socket_radius = 12
     socket_tolerance = 0.05
 
     height = 42
+
+    def make_wall(wall_width, wall_length, wall_height, pos, rot):
+        main = wp().box(wall_width, wall_length, wall_height)
+        cutout = wp().box((wall_width * 2), wall_length * 2, wall_height).translate(
+            ((-wall_width / 2) - 4, 0, wall_height / 2))
+        cutout = cutout.faces("<Z").edges().fillet((wall_height / 2) - 1)
+        main.faces().edges().fillet(2)
+        main = main.cut(cutout)
+
+        main = main.faces(">Z").edges().fillet(1.5)
+        # main = main.faces(">Y").edges().fillet(2)
+        # main = main.faces(">Y").edges().fillet(1)
+        main = rotate(main, rot).translate(pos)
+        return main
+
+    def make_guard(sg_width, sg_length, sg_height):
+        rotation = 20
+
+        sg_width_2 = sg_width / 2 + 3
+
+        side_offset = 15
+        guard_right = wp().box(sg_width_2, sg_length, sg_height).translate((sg_width / 4, 0, 0))
+
+        guard_left = wp().box(sg_width_2, sg_length - side_offset, sg_height).translate((-sg_width / 4, -side_offset / 2, 0))
+
+        guard = guard_right.union(guard_left)
+
+        cutter_right = rotate(wp().box(50, 200, 100).translate((sg_width_2, 0, 0)), (0, 30, -rotation)) # .rotate((0, 0, 1), (0, 0, -1), rotation)
+        cutter_left = rotate(wp().box(50, 200, 100).translate((-sg_width_2, 0, 0)), (0, -30, rotation))
+        return guard.cut(cutter_right).cut(cutter_left)
+        # guard = guard.faces("<Z").edges().fillet(10)
+
+        # return guard  # make_wall(side_guard_length, side_guard_width, side_guard_height, (0, 0, 0), (0, 0, 0))
 
     def make_top_base():
         pts = [
@@ -405,28 +454,29 @@ def hand_chair():
 
         ball = wp().sphere(cut_rad).translate((0, -tl2, 0))
         rod = wp().cylinder(top_len, cut_rad).rotate((-1, 0, 0), (1, 0, 0), 90)
-        rod = rod.translate((-10, 43, 15))
-        ball = ball.translate((-10, 43, 15))
+        # rod = rod.translate((-10, 43, 15))
+        # ball = ball.translate((-10, 43, 15))
         # rod = rod.union(ball.translate((0, -tl2, 0))).translate((0, tl2 + side_guard_height / 2, side_guard_height / 2))
         # guard = guard.cut(rod)
         # guard = guard.cut(ball)
         # guard = wp().box(side_guard_width, side_guard_length, side_guard_height)
-        guard = wp().cylinder(side_guard_height, side_guard_width / 2)
-        # guard = guard.cut(wp().box(300, 50, 100).translate((0, (-side_guard_width / 2 - 10), 0)))
-        # guard = guard.faces().edges(">Z").fillet(24)
-        guard = guard.faces("<Z").edges().fillet(10)
-        # guard_cutter = box(side_guard_width - 4, side_guard_length * 2, side_guard_height).translate((0, (-side_guard_length / 2) + 53, side_guard_height / 2))
-        guard_cutter = wp().cylinder(side_guard_height, (side_guard_width / 2) - 4).translate(
-            (0, 0, side_guard_height / 3))
-        # guard_cutter = guard_cutter.faces().edges("|Z").fillet(24)
-        guard_cutter = guard_cutter.faces("<Z").edges().fillet(10)
-        guard = guard.cut(guard_cutter)
-        guard = guard.faces(">Z").edges().fillet(1.5)
-        guard = guard.cut(wp().box(100, 200, 100).translate((50, 100, 0)))
-        guard = guard.cut(wp().box(100, 200, 100).translate((-50, 80, 0)))
-        # guard = guard.rotate((0, 0, 1), (0, 0, -1), -10)
-        guard = guard.cut(wp().box(300, 50, 100).translate((0, (-side_guard_width / 2) - 5, 0)))
-        guard = guard.translate((0, -top_len / 2 + 35, side_guard_height / 2))
+        # guard = wp().cylinder(side_guard_height, side_guard_width / 2)
+        # # guard = guard.cut(wp().box(300, 50, 100).translate((0, (-side_guard_width / 2 - 10), 0)))
+        # # guard = guard.faces().edges(">Z").fillet(24)
+        # guard = guard.faces("<Z").edges().fillet(10)
+        # # guard_cutter = box(side_guard_width - 4, side_guard_length * 2, side_guard_height).translate((0, (-side_guard_length / 2) + 53, side_guard_height / 2))
+        # guard_cutter = wp().cylinder(side_guard_height, (side_guard_width / 2) - 4).translate(
+        #     (0, 0, side_guard_height / 3))
+        # # guard_cutter = guard_cutter.faces().edges("|Z").fillet(24)
+        # guard_cutter = guard_cutter.faces("<Z").edges().fillet(10)
+        # guard = guard.cut(guard_cutter)
+        # # guard = guard.rotate((0, 0, 1), (0, 0, -1), 45)
+        # guard = guard.faces(">Z").edges().fillet(1.5)
+        # guard = guard.cut(wp().box(100, 200, 100).translate((50, 100, 0)))
+        # guard = guard.cut(wp().box(100, 200, 100).translate((-50, 80, 0)))
+        # # guard = guard.rotate((0, 0, 1), (0, 0, -1), -10)
+        # guard = guard.cut(wp().box(300, 50, 100).translate((0, (-side_guard_width / 2) - 5, 0)))
+        # guard = guard.translate((0, -top_len / 2 + 35, side_guard_height / 2))
         # guard = guard.faces(">Y").edges().fillet(1.5)
         # guard = guard.faces(">Z").edges(">Y").fillet(10)
         palm_cup = wp().cylinder(2 * (tl2 / 3), 30).rotate((-1, 0, 0), (1, 0, 0), 90).translate((0, 0, 0))
@@ -438,15 +488,24 @@ def hand_chair():
         palm_cup = palm_cup.union(sp1).union(sp2)
         cut_box = wp().box(100, 150, 60).translate((0, 0, -5))
         palm_cup = palm_cup.cut(cut_box).translate((0, socket_y_offset / 2, -15))
-        
+
         # ball = wp().sphere(15).translate((5, -20, 0))
         # return top.union(guard).union(palm_cup)
-        top = top.union(palm_cup).union(guard)
+        top = top.union(palm_cup)  # .union(guard)
         # top = top.faces().edges(">X and <Y").fillet(8)
         # top = top.faces().edges(">Z").fillet(0.5)
+        guard_base = make_guard(side_guard_width, side_guard_length, side_guard_height * 2)
+        guard_cutter = make_guard(side_guard_width - 4, side_guard_length + 10, side_guard_height * 2)
+        guard_cutter = guard_cutter.translate((0, 5, side_guard_height))
+        # guard_cutter = guard_cutter.faces("|Z").edges().fillet(2)
+        guard_base = guard_base.cut(guard_cutter)
+        guard_base = guard_base.translate((0, -side_guard_length + 15, top_height))
+
+        top = top.union(guard_base)
 
         socket_offset = 0
-        socket_outer = wp().sphere(socket_radius + 1.5 + socket_tolerance).translate((0, socket_y_offset, socket_offset + 3))
+        socket_outer = wp().sphere(socket_radius + 1.5 + socket_tolerance).translate(
+            (0, socket_y_offset, socket_offset + 3))
         # cutter2 = wp().box(socket_radius * 3, socket_radius * 3, 5).translate((0, 0, socket_radius + 3 + socket_tolerance))
         # socket_outer = socket_outer.cut(cutter2)
         socket_inner = wp().sphere(socket_radius + socket_tolerance).translate((0, socket_y_offset, socket_offset))
@@ -457,11 +516,11 @@ def hand_chair():
         # cutter = cutter.union(wp().box(4, socket_radius * 3, 20).rotate((0, 0, -1), (0, 0, 1), -45).translate((0, 0, flange_height)))
         # cutter = cutter.union(wp().box(4, socket_radius * 3, 20).translate((0, 0, flange_height)))
         cutter = cutter.translate((0, socket_y_offset, socket_offset - 15))
-        
+
         # top = top.rotate((0, 1, 0), (0, -1, 0), -15)
         top = top.translate((0, 0, 3))
         top = top.union(socket_outer).cut(socket_inner).cut(cutter)
-        
+
         # test_socket = socket_outer.cut(socket_inner).cut(cutter)
         # test_box_bottom = wp().box(20, 20, 4).translate((0, -35, socket_radius + 3.5))
         # test_socket = test_socket.union(test_box_bottom).rotate((-1, 0, 0), (1, 0, 0), 180)
@@ -487,8 +546,12 @@ def hand_chair():
         ]
 
         # outline = wp().polyline(pts).close()
-        outline = wp().circle(30)
+        outline = wp().circle(30).translate((-15, 0))
         base = outline.extrude(3)
+        outline = wp().rect(60, 60)
+        base = base.union(outline.extrude(3))
+        outline = wp().circle(30).translate((15, 0))
+        base = base.union(outline.extrude(3))
 
         # base = base.faces().edges("|Z").fillet(10)
 
@@ -499,15 +562,21 @@ def hand_chair():
         # trunk = wp().box(15, 30, height).translate((0, -15, height / 2))
         # trunk = trunk.faces().edges("|Z").fillet(5)
         trunk = wp().cylinder(height, 7).translate((0, 0, height / 2))
-        
+
         ball_join = (wp().sphere(socket_radius)
-                .union(wp().cylinder(30, 2.5).rotate((1, 0, 0), (-1, 0, 0), 90).translate((0, 0, -2)))
-                .union(wp().cylinder(30, 2.5).rotate((0, 1, 0), (0, -1, 0), 90).translate((0, 0, -2))))
+                     .union(wp().cylinder(30, 2.5).rotate((1, 0, 0), (-1, 0, 0), 90).translate((0, 0, -2)))
+                     .union(wp().cylinder(30, 2.5).rotate((0, 1, 0), (0, -1, 0), 90).translate((0, 0, -2))))
 
         ball_join = ball_join.translate((0, 0, height))
         # return top.union(guard).union(palm_cup)
         # top = trunk.union(ball)
         return base.union(trunk).union(ball_join)
+
+    # guard_base = make_guard(side_guard_width, side_guard_length, side_guard_height * 2)
+    # guard_cutter = make_guard(side_guard_width - 4, side_guard_length + 10, side_guard_height * 2)
+    # guard_cutter = guard_cutter.translate((0, 5, side_guard_height))
+    # # guard_cutter = guard_cutter.faces("|Z").edges().fillet(2)
+    # guard_base = guard_base.cut(guard_cutter)
 
     return make_top_base(), make_bottom_holder()
 
@@ -530,7 +599,8 @@ def puck_plate():
 
     # plate = box(width, height, 2)
 
-    plate = wp().box(width, height, 1)  # .faces('>Z').rect(width, height).workplane(offset=2).rect(width / 2 + 5, height / 2 + 5).loft(combine=True)
+    plate = wp().box(width, height,
+                     1)  # .faces('>Z').rect(width, height).workplane(offset=2).rect(width / 2 + 5, height / 2 + 5).loft(combine=True)
 
     holes = [
         [offset, 0, 0],
@@ -553,9 +623,9 @@ def screw_mount():
         .circle(8)
         .loft(combine=True)
     )
-    
+
     screw = cq.importers.importStep("./quarter_inch_screw.step").translate([0, 0, -10.5])
-    
+
     return result.cut(screw)
 
 
@@ -565,14 +635,16 @@ def usb_c_mount():
     width = 5.5
     depth = 4.3
     wall_depth = 4
-    
+
     walls = wp().box(width + wall_depth, 6 + wall_depth, max_vert + wall_depth)
-    
+
     slot = wp().box(width, 6 + wall_depth, max_vert).translate((0, -depth + 1, 0))
-    
+
     walls = walls.cut(slot)
-    
-    wedge = wp(orient="YZ").lineTo(0, ((max_vert - 0.2) / 2)).lineTo(depth, min_vert / 2).lineTo(depth, -min_vert / 2).lineTo(0, -(max_vert - 0.2) / 2).close().extrude(width)
+
+    wedge = wp(orient="YZ").lineTo(0, ((max_vert - 0.2) / 2)).lineTo(depth, min_vert / 2).lineTo(depth,
+                                                                                                 -min_vert / 2).lineTo(
+        0, -(max_vert - 0.2) / 2).close().extrude(width)
     # wedge = wedge.translate((-(width / 2), -depth / 2, -depth / 2))
     wedge = wedge.translate((-(width / 2), 1, 0))
     walls = walls.cut(wedge)
@@ -581,9 +653,14 @@ def usb_c_mount():
 
 chair_top, chair_mount = hand_chair()
 
+cq.exporters.export(threaded_cylinder(), "./threaded_cylinder.stl")
 # show(chair_top.translate((0, 0, 15)).union(chair_mount))
 # show(chair_mount)
 
 # cq.exporters.export(chair_top, "./hand_chair_top.stl")
 cq.exporters.export(chair_mount, "./hand_chair_mount.stl")
 cq.exporters.export(chair_top, "./hand_chair_top.stl")
+
+cq.exporters.export(chair_mount, "./hand_chair_mount.step")
+cq.exporters.export(chair_top, "./hand_chair_top.step")
+# cq.exporters.export(guard, "./guard.stl")
