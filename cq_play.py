@@ -375,7 +375,7 @@ def ball_join():
 
 
 def hand_chair():
-    top_len = 90
+    top_len = 100
     top_width = 60
     tl2 = top_len / 2
     tw2 = top_width / 2
@@ -446,14 +446,14 @@ def hand_chair():
         cut_rad = 18  # (top_height + side_guard_height) / 2
         # top = outline.extrude(top_height)
 
-        top = wp().box(top_width, top_len, top_height).translate((0, 0, top_height / 2))
+        top = wp().box(top_width, top_len, top_height).translate((0, -10, top_height / 2))
         top = top.faces().edges("|Z").fillet(24)
         # top = top.faces().edges("<X and <Y").fillet(40)
         top = top.faces(">Z").edges().fillet(5)
         top = top.faces("<Z").edges().fillet(3)
 
-        ball = wp().sphere(cut_rad).translate((0, -tl2, 0))
-        rod = wp().cylinder(top_len, cut_rad).rotate((-1, 0, 0), (1, 0, 0), 90)
+        # ball = wp().sphere(cut_rad).translate((0, -tl2, 0))
+        # rod = wp().cylinder(top_len, cut_rad).rotate((-1, 0, 0), (1, 0, 0), 90)
         # rod = rod.translate((-10, 43, 15))
         # ball = ball.translate((-10, 43, 15))
         # rod = rod.union(ball.translate((0, -tl2, 0))).translate((0, tl2 + side_guard_height / 2, side_guard_height / 2))
@@ -503,8 +503,8 @@ def hand_chair():
 
         top = top.union(guard_base)
 
-        socket_offset = 0
-        socket_outer = wp().sphere(socket_radius + 1.5 + socket_tolerance).translate(
+        socket_offset = -2
+        socket_outer = wp().sphere(socket_radius + 2 + socket_tolerance).translate(
             (0, socket_y_offset, socket_offset + 3))
         # cutter2 = wp().box(socket_radius * 3, socket_radius * 3, 5).translate((0, 0, socket_radius + 3 + socket_tolerance))
         # socket_outer = socket_outer.cut(cutter2)
@@ -533,7 +533,7 @@ def hand_chair():
         iso_external = IsoThread(
             major_diameter=13.2 * MM,
             pitch=1.8 * MM,
-            length=height * MM,
+            length=height * MM * 0.9,
             external=True,
             end_finishes=("square", "square"),
             hand="right"
@@ -552,7 +552,7 @@ def hand_chair():
         iso_internal = IsoThread(
             major_diameter=14 * MM,
             pitch=1.8 * MM,
-            length=height * MM / 1.5,
+            length=height * MM / 1.75,
             external=False,
             end_finishes=("chamfer", "fade"),
             hand="right",
@@ -569,7 +569,7 @@ def hand_chair():
         iso_internal = IsoThread(
             major_diameter=14 * MM,
             pitch=1.8 * MM,
-            length=8 * MM,
+            length=6 * MM,
             external=False,
             end_finishes=("chamfer", "fade"),
             hand="right",
@@ -577,7 +577,7 @@ def hand_chair():
         
         with BuildPart() as iso_internal_nut:
             with BuildSketch():
-                RegularPolygon(iso_internal.major_diameter * 0.75, 6)
+                RegularPolygon(iso_internal.major_diameter * 0.7, 10)
                 Circle(iso_internal.major_diameter / 2, mode=Mode.SUBTRACT)
             extrude(amount=iso_internal.length)
 
