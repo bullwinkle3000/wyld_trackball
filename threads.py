@@ -144,13 +144,13 @@ print(f"Plastic external & internal elapsed time: {elapsed_time:.3f}s")
 
 
 show(
-    internal.locate(Location((-10, -10, 0))),
-    external.locate(Location((10, -10, 0))),
+    # internal.locate(Location((-10, -10, 0))),
+    # external.locate(Location((10, -10, 0))),
     nut.locate(Location((-10, 10, 0))),
     iso_external_screw.locate(Location((10, 10, 0))),
-    acme_screw.locate(Location((20, 0, 0))),
-    metric_screw.locate(Location((-20, 0, 0))),
-    plastic_internal.locate(Location((0, -40))),
-    plastic_external.locate(Location((0, 40))),
+    # acme_screw.locate(Location((20, 0, 0))),
+    # metric_screw.locate(Location((-20, 0, 0))),
+    # plastic_internal.locate(Location((0, -40))),
+    # plastic_external.locate(Location((0, 40))),
     timeit=False,
 )
