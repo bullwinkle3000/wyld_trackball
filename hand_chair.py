@@ -94,25 +94,28 @@ def hand_chair():
 
         top = top.union(guard_base)
         socket_offset = -2
-        socket_outer = wp().sphere(socket_radius + 2 + socket_tolerance).translate(
+        socket_outer = wp().sphere(socket_radius + 1.5 + socket_tolerance).translate(
             (0, socket_y_offset, socket_offset + 3))
         # cutter2 = wp().box(socket_radius * 3, socket_radius * 3, 5).translate((0, 0, socket_radius + 3 + socket_tolerance))
         # socket_outer = socket_outer.cut(cutter2)
         socket_inner = wp().sphere(socket_radius + socket_tolerance).translate((0, socket_y_offset, socket_offset))
         cutter = wp().box(socket_radius * 3, socket_radius * 3, 20)
-        flange_height = 7
-        cutter = cutter.union(wp().box(6, socket_radius * 3, 22).translate((0, 0, flange_height)))
-        cutter = cutter.union(wp().box(socket_radius * 3, 6, 22).translate((0, 0, flange_height)))
+        flange_height = 6
+        cross_cutter = wp().box(6, socket_radius * 3, 22).translate((0, 0, flange_height))
+        cross_cutter = cross_cutter.union(wp().box(socket_radius * 3, 6, 22).translate((0, 0, flange_height)))
         # cutter = cutter.union(wp().box(4, socket_radius * 3, 20).rotate((0, 0, -1), (0, 0, 1), -45).translate((0, 0, flange_height)))
         # cutter = cutter.union(wp().box(4, socket_radius * 3, 20).translate((0, 0, flange_height)))
-        cutter = cutter.translate((0, socket_y_offset, socket_offset - 16))
+        cross_cutter = cross_cutter.translate((0, socket_y_offset, socket_offset - 15))
+        cutter = cutter.translate((0, socket_y_offset, socket_offset - 15))
 
-        # top = top.rotate((0, 1, 0), (0, -1, 0), -15)
+        socket_merged = socket_outer.cut(socket_inner).cut(cutter).cut(cross_cutter)
+ 
         
         top = top.translate((0, 0, 3))
+        socket_merged = rotate(socket_merged, (-5, -10, 0))
         socket_inner = rotate(socket_inner, (-5, -10, 0)) # socket_inner.rotate((0, -1, 0), (0, 1, 0), -10)
         cutter = rotate(cutter, (-5, -10, 0))  #   cutter.rotate((0, -1, 0), (0, 1, 0), -10)
-        top = top.union(socket_outer).cut(socket_inner).cut(cutter)
+        top = top.cut(socket_inner).cut(cross_cutter).union(socket_merged)
 
         # test_socket = socket_outer.cut(socket_inner).cut(cutter)
         # test_box_bottom = wp().box(20, 20, 4).translate((0, -35, socket_radius + 3.5))
@@ -120,7 +123,7 @@ def hand_chair():
         # top = top.faces("<Z").edges().fillet(0.5)
         # top = top.rotate((-1, 0, 0), (1, 0, 0), 10)
         top = top.translate((0, 0, height))
-        return top.translate((-5, 0, 0))   
+        return top.translate((-5, 0, 0)), socket_merged
     
     def make_trunk():
         iso_external = IsoThread(
@@ -155,8 +158,12 @@ def hand_chair():
                 Circle(iso_internal.major_diameter / 2 + 3)
                 Circle(iso_internal.major_diameter / 2, mode=Mode.SUBTRACT)
             extrude(amount=iso_internal.length)
-            
-        return iso_internal.fuse(iso_internal_shaft.part)
+        
+        cone = Solid.make_cone(iso_internal.major_diameter / 2 + 6, iso_internal.major_diameter / 2 + 3, 5)
+    
+        cone = cone.translate((0, 0, 2))
+        
+        return iso_internal.fuse(cone).fuse(iso_internal_shaft.part)
         
     def make_nut():
         iso_internal = IsoThread(
@@ -279,17 +286,18 @@ def hand_chair():
     # guard_cutter = guard_cutter.translate((0, 5, side_guard_height))
     # # guard_cutter = guard_cutter.faces("|Z").edges().fillet(2)
     # guard_base = guard_base.cut(guard_cutter)
-    top = make_top_base()
+    top, socket = make_top_base()
     base, ball_shaft, nut = make_bottom_holder()
-    return top, base, ball_shaft, nut
+    return top, base, ball_shaft, nut, socket
 
-chair_top, chair_mount, shaft, nut = hand_chair()
+chair_top, chair_mount, shaft, nut, socket = hand_chair()
 
 show(
     chair_top.translate((0, 0, 15)), 
     shaft,
     nut.translate((20, 20, 0)),
-    chair_mount.translate((0, 0, -40))
+    chair_mount.translate((0, 0, -40)),
+    socket.translate((0, 0, -60))
 )
 
 # cq.exporters.export(threaded_cylinder(), "./threaded_cylinder.stl")
